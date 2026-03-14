@@ -1,0 +1,17 @@
+{
+	"viewer": {
+		"backgroundcolor": "MidnightBlue",
+		"textinfocolor": "White",
+		"textinfosize": 18,
+		"objectcolor": "White",
+		"origincolor": "Gray",
+		"origindiameter": 0.5,
+		"compasssize": 50
+	},
+	"toolpath": {
+		"pathwidth": 2,
+		"rapidmovecolor": "Red",
+		"workmovecolor": "Green",
+		"circleresolution": 0.1
+	}
+}

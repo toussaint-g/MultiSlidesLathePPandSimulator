@@ -1,0 +1,19 @@
+# Ignore the pycache folder
+__pycache__/
+a_iso_parser/__pycache__/
+b_machines_config/__pycache__/
+c_toolpath_constructor/__pycache__/
+d_iso_generator/__pycache__/
+
+# Ignore the folders
+.vscode/
+venv/
+dev_resources/
+
+# Ignore the files
+*.pyc
+*.txt
+*.debug
+
+# Requirements
+!requirements.txt
