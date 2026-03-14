@@ -129,7 +129,7 @@ def display_results(path_export_file):
     """ Affiche la fenêtre avec le résultat de l'analyse du G Code """
 
     result_window = tk.Toplevel()
-    result_window.title("MultiSlidesLathePPandSimulator: Résultat")
+    result_window.title("PPandSimulatorForMultiSlidesLathe: Résultat")
     result_window.state('zoomed')
 
     result_frame = tk.Frame(result_window)
@@ -242,7 +242,7 @@ def main():
 
     # Création form avec nom & dimension
     form = style.master
-    form.title("MultiSlidesLathePPandSimulator")
+    form.title("PPandSimulatorForMultiSlidesLathe")
     form.state('zoomed')
 
     # Frame principale
@@ -265,7 +265,7 @@ def main():
     # Titre
     tb.Label(
         main_frame,
-        text="MultiSlidesLathePPandSimulator",
+        text="PPandSimulatorForMultiSlidesLathe",
         font=("Segoe UI", 35, "bold"),
         bootstyle="dark",
         foreground="white"
