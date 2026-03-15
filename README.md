@@ -1,9 +1,9 @@
 # PPandSimulatorForMultiSlidesLathe
 
-## Auteur
+## Auteur:
 **Toussaint Guillaume**
 
-## Description
+## Description:
 Ce développement a pour objectifs:
 - De fournir une application capable de **générer du code ISO depuis les fichiers APT de CATIA V5**.
 - D'**analyser les temps d'usinage et les distances parcourues** par chaque outil.
@@ -11,7 +11,7 @@ Ce développement a pour objectifs:
 
 Les machines cibles de ce projet sont des **décolleteuses CNC multi-canaux TSUGAMI avec commande FANUC**.
 
-## Test
+## Test:
 Pour tester l'application, vous pouvez utilier les fichiers présents dans le répertoire "data_testing".
 
 ## Manipulateur du viewer 3D:

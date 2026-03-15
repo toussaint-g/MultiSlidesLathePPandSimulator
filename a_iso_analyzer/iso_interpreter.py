@@ -48,9 +48,8 @@ class IsoInterpreter:
             self.rapid_move_code = _normalize_gm_code(self.machine_config["machineinformations"]["rapidmove"])
             self.linear_move_code = _normalize_gm_code(self.machine_config["machineinformations"]["linearmove"])
             self.circular_move_CW_code = _normalize_gm_code(self.machine_config["machineinformations"]["circularmoveCW"])
-            self.circular_move_CWW_code = _normalize_gm_code(self.machine_config["machineinformations"]["circularmoveCCW"])
+            self.circular_move_CCW_code = _normalize_gm_code(self.machine_config["machineinformations"]["circularmoveCCW"])
             self.timer_code = _normalize_gm_code(self.machine_config["machineinformations"]["timer"])
-            self.toolchange_code = _normalize_gm_code(self.machine_config["machineinformations"]["toolchange"])
             self.toolname_prefix = self.machine_config["machineinformations"]["toolnameprefix"]
             self.xy_work_plane_code = _normalize_gm_code(self.machine_config["machineinformations"]["xyworkplane"])
             self.xz_work_plane_code = _normalize_gm_code(self.machine_config["machineinformations"]["xzworkplane"])
@@ -98,9 +97,8 @@ class IsoInterpreter:
             pattern_rapid_move = _build_gm_code_pattern(self.rapid_move_code)
             pattern_linear_move = _build_gm_code_pattern(self.linear_move_code)
             pattern_circular_move_cw = _build_gm_code_pattern(self.circular_move_CW_code)
-            pattern_circular_move_ccw = _build_gm_code_pattern(self.circular_move_CWW_code)
+            pattern_circular_move_ccw = _build_gm_code_pattern(self.circular_move_CCW_code)
             pattern_timer = _build_gm_code_pattern(self.timer_code)
-            pattern_toolchange = _build_gm_code_pattern(self.toolchange_code)
             pattern_work_plane_xy = _build_gm_code_pattern(self.xy_work_plane_code)
             pattern_work_plane_xz = _build_gm_code_pattern(self.xz_work_plane_code)
             pattern_work_plane_yz = _build_gm_code_pattern(self.yz_work_plane_code)
@@ -126,7 +124,6 @@ class IsoInterpreter:
                 match_move_cw = pattern_circular_move_cw.search(line)
                 match_move_ccw = pattern_circular_move_ccw.search(line)
                 match_timer = pattern_timer.search(line)
-                match_m6 = pattern_toolchange.search(line)
                 match_work_plane_xy = pattern_work_plane_xy.search(line)
                 match_work_plane_xz = pattern_work_plane_xz.search(line)
                 match_work_plane_yz = pattern_work_plane_yz.search(line)
@@ -187,6 +184,7 @@ class IsoInterpreter:
                     position_y = self.home_tool_y
                     position_z = self.home_tool_z
                     work_plane = self.work_plane_by_code[self.default_work_plane]
+
                 else:
                     tool = obj_modal.tool
                     tool_offset = obj_modal.tool_offset
@@ -199,7 +197,7 @@ class IsoInterpreter:
                 elif match_move_cw:
                     move = self.circular_move_CW_code
                 elif match_move_ccw:
-                    move = self.circular_move_CWW_code
+                    move = self.circular_move_CCW_code
                 else:
                     move = obj_modal.gcode_group01
 
@@ -260,7 +258,7 @@ class IsoInterpreter:
                     productive_time = time
 
                 # Si changement d'outil, on ajoute le temps de changement d'outil
-                if match_m6:
+                if match_tool:
                     time = time + (self.change_tool_time / 60)
 
                 # Création de l'objet ligne et ajout à la liste

@@ -12,7 +12,6 @@
 		    "circularmoveCW": "G2",
         "circularmoveCCW": "G3",
         "timer": "G4",
-        "toolchange": "M6",
         "toolnameprefix": "T",
         "xyworkplane": "G17",
         "xzworkplane": "G18",

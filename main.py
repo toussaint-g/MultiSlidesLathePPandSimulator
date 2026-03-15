@@ -92,19 +92,6 @@ def apt_treatment(path_apt_file, path_export_file, machine_name, channel_name):
         messagebox.showerror("Erreur conversion", str(e))
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 # Fonction traitement G-Code
 def gcode_treatment(path_gcode_file, path_export_file, machine_name, channel_name):
 
@@ -253,14 +240,11 @@ def main():
     for col in range(3):
         main_frame.grid_columnconfigure(col, weight=1, uniform="main_cols")
 
-
-    # Logo
-    logo_icon = Image.open("img/logo.png")  # Charge le logo
-    logo_icon = logo_icon.resize((32, 32))
-    logo_icon_tk = ImageTk.PhotoImage(logo_icon) # Conversion image en format Tkinter
-
-    # Appliquer l'icÃ´ne Ã  la fenêtre
-    form.iconphoto(True, logo_icon_tk)
+    # Icon de l'application
+    icon_app = Image.open("img/iconform.png")
+    #icon_app = icon_app.resize((32, 32))
+    icon_app_tk = ImageTk.PhotoImage(icon_app) # Conversion image en format Tkinter
+    form.iconphoto(True, icon_app_tk) # Appliquer l'icône au formulaire
 
     # Titre
     tb.Label(
@@ -271,32 +255,46 @@ def main():
         foreground="white"
     ).grid(column=0, row=0, columnspan=3, padx=5, pady=5)
 
+    # Logo de l'application
+    logo_app = Image.open("img/logoapp.png")
+    #logo_app = icon_app.resize((150, 150), Image.Resampling.LANCZOS)
+    logo_app_tk = ImageTk.PhotoImage(logo_app)
+    label_logo_tk = tb.Label(main_frame, image=logo_app_tk)
+    label_logo_tk.grid(column=0, row=1, columnspan=3, padx=5, pady=25)
+   
     # Ligne vide
-    tb.Label(main_frame, text="", font=("Segoe UI", 12)).grid(column=0, row=1, sticky="w", padx=5, pady=5)
+    tb.Label(main_frame, text="", font=("Segoe UI", 12)).grid(column=0, row=2, sticky="w", padx=5, pady=5)
 
 
 
     # Colonne 1
+    # Section titre post-process
+    tb.Label(main_frame, text="Zone post-process :", font=("Segoe UI", 22)).grid(column=0, row=3, sticky="w", padx=5, pady=5)
+    tb.Label(main_frame, text="Pour le post-process des fichiers ATP de CATIA V5.", font=("Segoe UI", 16)).grid(column=0, row=4, sticky="w", padx=5, pady=5)
+    
+    # Ligne vide
+    tb.Label(main_frame, text="", font=("Segoe UI", 12)).grid(column=0, row=5, sticky="w", padx=5, pady=5)
+
     # Section APT
-    tb.Label(main_frame, text="Fichier APT :", font=("Segoe UI", 18)).grid(column=0, row=2, sticky="w", padx=5, pady=5)
+    tb.Label(main_frame, text="Fichier APT :", font=("Segoe UI", 18)).grid(column=0, row=6, sticky="w", padx=5, pady=5)
     label_apt_for_pp = tb.Label(main_frame, text="", width=50, bootstyle="secondary")
-    label_apt_for_pp.grid(column=0, row=3, sticky="w")
+    label_apt_for_pp.grid(column=0, row=7, sticky="w")
     tb.Button(main_frame, text="Sélectionner", bootstyle="primary", 
               command=lambda: file_select("Fichier APT", "*.aptsource", label_apt_for_pp, 
-                                          lambda: update_calculate_button(label_apt_for_pp, [calculate_button_for_pp]))).grid(column=0, row=4, sticky="w", padx=5, pady=5)
+                                          lambda: update_calculate_button(label_apt_for_pp, [calculate_button_for_pp]))).grid(column=0, row=8, sticky="w", padx=5, pady=5)
 
     # Section dossier de sortie
-    tb.Label(main_frame, text="Dossier de sortie :", font=("Segoe UI", 18)).grid(column=0, row=5, sticky="w", padx=5, pady=5)
+    tb.Label(main_frame, text="Dossier de sortie :", font=("Segoe UI", 18)).grid(column=0, row=9, sticky="w", padx=5, pady=5)
     label_output_folder_for_pp = tb.Label(main_frame, text="C:\\Temp", width=50, bootstyle="secondary")
-    label_output_folder_for_pp.grid(column=0, row=6, sticky="w")
+    label_output_folder_for_pp.grid(column=0, row=10, sticky="w")
     tb.Button(main_frame, text="Sélectionner", bootstyle="primary", 
-              command=lambda: folder_select(label_output_folder_for_pp)).grid(column=0, row=7, sticky="w", padx=5, pady=5)
+              command=lambda: folder_select(label_output_folder_for_pp)).grid(column=0, row=11, sticky="w", padx=5, pady=5)
 
     # Ligne vide
-    tb.Label(main_frame, text="", font=("Segoe UI", 12)).grid(column=0, row=8, sticky="w", padx=5, pady=5)
+    tb.Label(main_frame, text="", font=("Segoe UI", 12)).grid(column=0, row=12, sticky="w", padx=5, pady=5)
 
     # Section machine
-    tb.Label(main_frame, text="Machine cible :", font=("Segoe UI", 18)).grid(column=0, row=9, sticky="w", padx=5, pady=5)
+    tb.Label(main_frame, text="Machine cible :", font=("Segoe UI", 18)).grid(column=0, row=13, sticky="w", padx=5, pady=5)
     # Données fournies par le JSON
     machines_list_for_pp = MachinesConfigLoader.get_machines_names()
     selected_machine_for_pp = tk.StringVar(value=machines_list_for_pp[0] if machines_list_for_pp else "")
@@ -308,10 +306,10 @@ def main():
         width=47,
         bootstyle="secondary"
     )
-    machine_combo_for_pp.grid(column=0, row=10, sticky="w", padx=5, pady=5)
+    machine_combo_for_pp.grid(column=0, row=14, sticky="w", padx=5, pady=5)
 
     # Section canal machine
-    tb.Label(main_frame, text="Canal de la machine :", font=("Segoe UI", 18)).grid(column=0, row=11, sticky="w", padx=5, pady=5)
+    tb.Label(main_frame, text="Canal de la machine :", font=("Segoe UI", 18)).grid(column=0, row=15, sticky="w", padx=5, pady=5)
     # Données fournies par le JSON
     channels_list_for_pp = MachinesConfigLoader.get_channels_list_for_machine(selected_machine_for_pp.get())
     selected_channel_for_pp = tk.StringVar(value=channels_list_for_pp[0] if channels_list_for_pp else "")
@@ -323,7 +321,7 @@ def main():
         width=47,
         bootstyle="secondary"
     )
-    channel_combo_for_pp.grid(column=0, row=12, sticky="w", padx=5, pady=5)
+    channel_combo_for_pp.grid(column=0, row=16, sticky="w", padx=5, pady=5)
 
     machine_combo_for_pp.bind(
         "<<ComboboxSelected>>",
@@ -331,10 +329,10 @@ def main():
     )
 
     # Ligne vide
-    tb.Label(main_frame, text="", font=("Segoe UI", 12)).grid(column=0, row=13, sticky="w", padx=5, pady=5)
+    tb.Label(main_frame, text="", font=("Segoe UI", 12)).grid(column=0, row=17, sticky="w", padx=5, pady=5)
 
     # Section générer le fichier ISO
-    tb.Label(main_frame, text="Générer le fichier ISO :", font=("Segoe UI", 18)).grid(column=0, row=14, sticky="w", padx=5, pady=5)
+    tb.Label(main_frame, text="Générer le fichier ISO :", font=("Segoe UI", 18)).grid(column=0, row=18, sticky="w", padx=5, pady=5)
 
     # Section calculer les données
     calculate_button_for_pp = tb.Button(main_frame, text="Start", bootstyle="success", command=lambda: apt_treatment(
@@ -342,29 +340,33 @@ def main():
         Path(label_output_folder_for_pp.cget("text")) / get_datetime_string(),
         selected_machine_for_pp.get(),
         selected_channel_for_pp.get()))
-    calculate_button_for_pp.grid(column=0, row=15, sticky="w", pady=5)
+    calculate_button_for_pp.grid(column=0, row=19, sticky="w", pady=5)
     calculate_button_for_pp.config(state="disabled")  # Désactiver au début
 
 
 
     # Colonne 2
+    # Section titre analyse
+    tb.Label(main_frame, text="Zone analyse :", font=("Segoe UI", 22)).grid(column=1, row=3, sticky="w", padx=5, pady=5)
+    tb.Label(main_frame, text="Pour l'analyse des temps d'usinage des fichiers ISO.", font=("Segoe UI", 16)).grid(column=1, row=4, sticky="w", padx=5, pady=5)
+
     # Section code ISO
-    tb.Label(main_frame, text="Fichier ISO :", font=("Segoe UI", 18)).grid(column=1, row=2, sticky="w", padx=5, pady=5)
+    tb.Label(main_frame, text="Fichier ISO :", font=("Segoe UI", 18)).grid(column=1, row=6, sticky="w", padx=5, pady=5)
     label_iso_file_for_analyzer = tb.Label(main_frame, text="", width=50, bootstyle="secondary")
-    label_iso_file_for_analyzer.grid(column=1, row=3, sticky="w")
+    label_iso_file_for_analyzer.grid(column=1, row=7, sticky="w")
     tb.Button(main_frame, text="Sélectionner", bootstyle="primary", 
               command=lambda: file_select("Fichier ISO", "*.anc;*.nc;*.txt;*.path1;*.path2;*.path3", label_iso_file_for_analyzer, 
-                                          lambda: update_calculate_button(label_iso_file_for_analyzer, [calculate_button_for_analyzer, visualize_button_for_analyzer]))).grid(column=1, row=4, sticky="w", padx=5, pady=5)
+                                          lambda: update_calculate_button(label_iso_file_for_analyzer, [calculate_button_for_analyzer, visualize_button_for_analyzer]))).grid(column=1, row=8, sticky="w", padx=5, pady=5)
 
     # Section dossier de sortie
-    tb.Label(main_frame, text="Dossier de sortie :", font=("Segoe UI", 18)).grid(column=1, row=5, sticky="w", padx=5, pady=5)
+    tb.Label(main_frame, text="Dossier de sortie :", font=("Segoe UI", 18)).grid(column=1, row=9, sticky="w", padx=5, pady=5)
     label_output_folder_for_analyzer = tb.Label(main_frame, text="C:\\Temp", width=50, bootstyle="secondary")
-    label_output_folder_for_analyzer.grid(column=1, row=6, sticky="w")
+    label_output_folder_for_analyzer.grid(column=1, row=10, sticky="w")
     tb.Button(main_frame, text="Sélectionner", bootstyle="primary", 
-              command=lambda: folder_select(label_output_folder_for_analyzer)).grid(column=1, row=7, sticky="w", padx=5, pady=5)
+              command=lambda: folder_select(label_output_folder_for_analyzer)).grid(column=1, row=11, sticky="w", padx=5, pady=5)
 
     # Section machine
-    tb.Label(main_frame, text="Machine cible :", font=("Segoe UI", 18)).grid(column=1, row=9, sticky="w", padx=5, pady=5)
+    tb.Label(main_frame, text="Machine cible :", font=("Segoe UI", 18)).grid(column=1, row=13, sticky="w", padx=5, pady=5)
     # Données fournies par le JSON
     machines_list_for_analyzer = MachinesConfigLoader.get_machines_names()
     selected_machine_for_analyzer = tk.StringVar(value=machines_list_for_analyzer[0] if machines_list_for_analyzer else "")
@@ -376,10 +378,10 @@ def main():
         width=47,
         bootstyle="secondary"
     )
-    machine_combo_for_analyzer.grid(column=1, row=10, sticky="w", padx=5, pady=5)
+    machine_combo_for_analyzer.grid(column=1, row=14, sticky="w", padx=5, pady=5)
 
     # Section canal machine
-    tb.Label(main_frame, text="Canal de la machine :", font=("Segoe UI", 18)).grid(column=1, row=11, sticky="w", padx=5, pady=5)
+    tb.Label(main_frame, text="Canal de la machine :", font=("Segoe UI", 18)).grid(column=1, row=15, sticky="w", padx=5, pady=5)
     # Données fournies par le JSON
     channels_list_for_analyzer = MachinesConfigLoader.get_channels_list_for_machine(selected_machine_for_analyzer.get())
     selected_channel_for_analyzer = tk.StringVar(value=channels_list_for_analyzer[0] if channels_list_for_analyzer else "")
@@ -391,7 +393,7 @@ def main():
         width=47,
         bootstyle="secondary"
     )
-    channel_combo_for_analyzer.grid(column=1, row=12, sticky="w", padx=5, pady=5)
+    channel_combo_for_analyzer.grid(column=1, row=16, sticky="w", padx=5, pady=5)
 
     machine_combo_for_analyzer.bind(
         "<<ComboboxSelected>>",
@@ -399,37 +401,41 @@ def main():
     )
 
     # Section calculer les données
-    tb.Label(main_frame, text="Analyser le fichier ISO :", font=("Segoe UI", 18)).grid(column=1, row=14, sticky="w", padx=5, pady=5)    
+    tb.Label(main_frame, text="Analyser le fichier ISO :", font=("Segoe UI", 18)).grid(column=1, row=18, sticky="w", padx=5, pady=5)    
     calculate_button_for_analyzer = tb.Button(main_frame, text="Start", bootstyle="success", command=lambda: gcode_treatment(
         Path(label_iso_file_for_analyzer.cget("text")),
         Path(label_output_folder_for_analyzer.cget("text")) / get_datetime_string(),
         selected_machine_for_analyzer.get(),
         selected_channel_for_analyzer.get()))
-    calculate_button_for_analyzer.grid(column=1, row=15, sticky="w", pady=5)
+    calculate_button_for_analyzer.grid(column=1, row=19, sticky="w", pady=5)
     calculate_button_for_analyzer.config(state="disabled")  # Désactiver au début
 
 
 
     # Colonne 3
+    # Section titre simulateur
+    tb.Label(main_frame, text="Zone simulation :", font=("Segoe UI", 22)).grid(column=2, row=3, sticky="w", padx=5, pady=5)
+    tb.Label(main_frame, text="Pour la simulation des trajectoires des fichiers ISO.\n-> Sélection du fichier à simuler dans la zone ""analyse""", font=("Segoe UI", 16)).grid(column=2, row=4, sticky="w", padx=5, pady=5)
+
     # Section STL
-    tb.Label(main_frame, text="Fichier STL :", font=("Segoe UI", 18)).grid(column=2, row=2, sticky="w", padx=5, pady=5)
+    tb.Label(main_frame, text="Fichier STL :", font=("Segoe UI", 18)).grid(column=2, row=6, sticky="w", padx=5, pady=5)
     label_stl = tb.Label(main_frame, text="", width=50, bootstyle="secondary")
-    label_stl.grid(column=2, row=3, sticky="w", padx=5)
+    label_stl.grid(column=2, row=7, sticky="w", padx=5)
     tb.Button(main_frame, text="Sélectionner", bootstyle="primary", 
               command=lambda: file_select("Fichier STL", "*.stl", label_stl, 
-                                          lambda: update_calculate_button(label_iso_file_for_analyzer, [calculate_button_for_analyzer, visualize_button_for_analyzer]))).grid(column=2, row=4, sticky="w", padx=5, pady=5)
+                                          lambda: update_calculate_button(label_iso_file_for_analyzer, [calculate_button_for_analyzer, visualize_button_for_analyzer]))).grid(column=2, row=8, sticky="w", padx=5, pady=5)
 
     # Section visualisation de la config machine
     tb.Label(main_frame, text="Visualiser la config machine :", 
-             font=("Segoe UI", 18)).grid(column=2, row=9, sticky="w", padx=5, pady=5)
+             font=("Segoe UI", 18)).grid(column=2, row=13, sticky="w", padx=5, pady=5)
 
     visualize_button_for_analyzer = tb.Button(main_frame, text="Visualiser", bootstyle="primary", 
                                  command=lambda: open_machine_image_for(selected_machine_for_analyzer.get()))
-    visualize_button_for_analyzer.grid(column=2, row=10, sticky="w", padx=5, pady=5)
+    visualize_button_for_analyzer.grid(column=2, row=14, sticky="w", padx=5, pady=5)
 
     # Section décalage pièce
     tb.Label(main_frame, text="Epaisseur pièce (pour déc COP) :", 
-             font=("Segoe UI", 18)).grid(column=2, row=11, sticky="w", padx=5, pady=5)
+             font=("Segoe UI", 18)).grid(column=2, row=15, sticky="w", padx=5, pady=5)
     
     # Validation de l'entrée pour n'autoriser que les nombres décimaux négatifs et les états intermédiaires
     vcmd = (form.register(nombre_decimal_negatif_valide), "%P")
@@ -442,17 +448,17 @@ def main():
         validate="key",
         validatecommand=vcmd
     )
-    part_thickness.grid(column=2, row=12, sticky="w", padx=5, pady=5)
+    part_thickness.grid(column=2, row=16, sticky="w", padx=5, pady=5)
 
     # Section Visualiser les trajectoires
-    tb.Label(main_frame, text="Visualiser les trajectoires :", font=("Segoe UI", 18)).grid(column=2, row=14, sticky="w", padx=5, pady=5)
+    tb.Label(main_frame, text="Visualiser les trajectoires :", font=("Segoe UI", 18)).grid(column=2, row=18, sticky="w", padx=5, pady=5)
     visualize_button_for_analyzer = tb.Button(main_frame, text="Start", bootstyle="success", command=lambda: viewer_launch(
         Path(label_iso_file_for_analyzer.cget("text")), 
         Path(label_stl.cget("text")),
         selected_machine_for_analyzer.get(), 
         selected_channel_for_analyzer.get(),
         part_thickness_var.get()))
-    visualize_button_for_analyzer.grid(column=2, row=15, sticky="w", padx=5, pady=5)
+    visualize_button_for_analyzer.grid(column=2, row=19, sticky="w", padx=5, pady=5)
     visualize_button_for_analyzer.config(state="disabled")  # Désactiver au début
 
     update_calculate_button(
