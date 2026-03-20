@@ -1,14 +1,17 @@
 
 # -*- coding: utf-8 -*-
 
+from b_machines_config.machine_parameters import JsonDict, MachineParameters
+
 class IsoAnalyzerWriter:
     """Classe qui permet d'écrire le rapport"""
 
-    def __init__(self, machine_config):
+    def __init__(self, machine_config: JsonDict):
         self.digit_after_point_distance = 3
         self.digit_after_point_time = 4
         try:
-            self.rapidfeedrate = machine_config["machineinformations"]["rapidfeedrate"]
+            self.machine = MachineParameters.from_machine_config(machine_config, home_x_mode="machine")
+            self.rapidfeedrate = self.machine.rapidfeedrate
         except KeyError:
             raise ValueError("MachineConfigError: Clé 'rapidfeedrate' absente du fichier JSON")
 

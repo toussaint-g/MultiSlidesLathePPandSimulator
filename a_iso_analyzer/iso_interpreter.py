@@ -1,23 +1,14 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 import math
 import re
 from enum import Enum
-
-
-def _normalize_gm_code(code):
-    """Normalise un code G/M numérique (ex: G00 -> G0, M06 -> M6)."""
-    normalized_code = code.strip().upper()
-    match = re.fullmatch(r'([A-Z]+)0*(\d+)', normalized_code)
-    if not match:
-        return normalized_code
-    prefix, number = match.groups()
-    return f"{prefix}{int(number)}"
+from b_machines_config.machine_parameters import JsonDict, MachineParameters, normalize_gm_code
 
 
 def _build_gm_code_pattern(code):
     """Construit un regex tolérant les zéros à gauche sur la partie numérique."""
-    normalized_code = _normalize_gm_code(code)
+    normalized_code = normalize_gm_code(code)
     match = re.fullmatch(r'([A-Z]+)(\d+)', normalized_code)
     if not match:
         return re.compile(rf'(?<![A-Za-z]){re.escape(normalized_code)}(?=\D|$)')
@@ -27,41 +18,36 @@ def _build_gm_code_pattern(code):
 def _build_work_plane_map(xy_code, xz_code, yz_code):
     """Associe les codes plan de travail du JSON aux plans XY/XZ/YZ internes."""
     return {
-        _normalize_gm_code(xy_code): WorkPlaneType.XY,
-        _normalize_gm_code(xz_code): WorkPlaneType.XZ,
-        _normalize_gm_code(yz_code): WorkPlaneType.YZ,
+        normalize_gm_code(xy_code): WorkPlaneType.XY,
+        normalize_gm_code(xz_code): WorkPlaneType.XZ,
+        normalize_gm_code(yz_code): WorkPlaneType.YZ,
     }
 
 
 class IsoInterpreter:
     """Classe qui permet d'analyser et comprendre le GCode"""
 
-    def __init__(self, machine_config, channel_name):
+    def __init__(self, machine_config: JsonDict, channel_name: str):
         try:
-            self.machine_config = machine_config
-            self.channel_name = channel_name
-            self.calculation_tolerance = self.machine_config["calculationtolerance"]
-            # machineinformations
-            self.rapidfeedrate = self.machine_config["machineinformations"]["rapidfeedrate"]
-            self.change_tool_time = self.machine_config["machineinformations"]["changetooltime"]
-            self.x_diameter = self.machine_config["machineinformations"]["xdiameter"]
-            self.rapid_move_code = _normalize_gm_code(self.machine_config["machineinformations"]["rapidmove"])
-            self.linear_move_code = _normalize_gm_code(self.machine_config["machineinformations"]["linearmove"])
-            self.circular_move_CW_code = _normalize_gm_code(self.machine_config["machineinformations"]["circularmoveCW"])
-            self.circular_move_CCW_code = _normalize_gm_code(self.machine_config["machineinformations"]["circularmoveCCW"])
-            self.timer_code = _normalize_gm_code(self.machine_config["machineinformations"]["timer"])
-            self.toolname_prefix = self.machine_config["machineinformations"]["toolnameprefix"]
-            self.xy_work_plane_code = _normalize_gm_code(self.machine_config["machineinformations"]["xyworkplane"])
-            self.xz_work_plane_code = _normalize_gm_code(self.machine_config["machineinformations"]["xzworkplane"])
-            self.yz_work_plane_code = _normalize_gm_code(self.machine_config["machineinformations"]["yzworkplane"])
+            self.machine = MachineParameters.from_config(machine_config, channel_name, home_x_mode="machine")
+            self.calculation_tolerance = self.machine.calculation_tolerance
+            self.rapidfeedrate = self.machine.rapidfeedrate
+            self.change_tool_time = self.machine.change_tool_time
+            self.x_diameter = self.machine.x_diameter
+            self.rapid_move_code = self.machine.rapid_move_code
+            self.linear_move_code = self.machine.linear_move_code
+            self.circular_move_CW_code = self.machine.circular_move_CW_code
+            self.circular_move_CCW_code = self.machine.circular_move_CCW_code
+            self.timer_code = self.machine.timer_code
+            self.toolname_prefix = self.machine.toolname_prefix
+            self.xy_work_plane_code = self.machine.xy_work_plane_code
+            self.xz_work_plane_code = self.machine.xz_work_plane_code
+            self.yz_work_plane_code = self.machine.yz_work_plane_code
             self.work_plane_by_code = _build_work_plane_map(self.xy_work_plane_code,self.xz_work_plane_code,self.yz_work_plane_code)
-            self.default_work_plane = _normalize_gm_code(self.machine_config["machineinformations"]["defaultworkplane"])
-            # channelslist
-            self.home_tool_x = self.machine_config["channelslist"][self.channel_name]["hometool"]["x"]
-            if self.x_diameter:
-                self.home_tool_x = self.home_tool_x / 2
-            self.home_tool_y = self.machine_config["channelslist"][self.channel_name]["hometool"]["y"]
-            self.home_tool_z = self.machine_config["channelslist"][self.channel_name]["hometool"]["z"]
+            self.default_work_plane = self.machine.default_work_plane
+            self.home_tool_x = self.machine.home_tool_x
+            self.home_tool_y = self.machine.home_tool_y
+            self.home_tool_z = self.machine.home_tool_z
         except KeyError:
             raise ValueError("MachineConfigError: une clé est absente dans le fichier JSON")
         except ValueError:
@@ -74,7 +60,7 @@ class IsoInterpreter:
         # Liste qui va stocker les objets ligne avec les données utiles pour le rapport
         lines = []
 
-        obj_modal = Modal(self.machine_config, self.channel_name)
+        obj_modal = Modal(machine_parameters=self.machine)
         obj_mathematical_functions = MathematicalFunctions(self.calculation_tolerance, self.x_diameter)
 
         # Ouverture du fichier GCode
@@ -388,26 +374,23 @@ class MathematicalFunctions:
 class Modal:
     """Classe qui permet de mémoriser les fonctions modales du GCode"""
 
-    def __init__(self, machine_config, channel_name):
+    def __init__(self, machine_parameters: MachineParameters):
 
         try:
-            self.machine_config = machine_config
-            self.channel_name = channel_name
-            # machineinformations
-            self.feedrate = self.machine_config["machineinformations"]["rapidfeedrate"]
-            self.x_diameter = self.machine_config["machineinformations"]["xdiameter"]
-            self.gcode_group01 = _normalize_gm_code(self.machine_config["machineinformations"]["rapidmove"])
-            self.xy_work_plane_code = _normalize_gm_code(self.machine_config["machineinformations"]["xyworkplane"])
-            self.xz_work_plane_code = _normalize_gm_code(self.machine_config["machineinformations"]["xzworkplane"])
-            self.yz_work_plane_code = _normalize_gm_code(self.machine_config["machineinformations"]["yzworkplane"])
+            self.machine = machine_parameters
+            self.feedrate = self.machine.rapidfeedrate
+            self.x_diameter = self.machine.x_diameter
+            self.gcode_group01 = self.machine.rapid_move_code
+            self.xy_work_plane_code = self.machine.xy_work_plane_code
+            self.xz_work_plane_code = self.machine.xz_work_plane_code
+            self.yz_work_plane_code = self.machine.yz_work_plane_code
             self.work_plane_by_code = _build_work_plane_map(self.xy_work_plane_code, self.xz_work_plane_code, self.yz_work_plane_code)
-            self.default_work_plane = _normalize_gm_code(self.machine_config["machineinformations"]["defaultworkplane"])
-            # channelslist
-            self.home_tool_x = self.machine_config["channelslist"][self.channel_name]["hometool"]["x"]
+            self.default_work_plane = self.machine.default_work_plane
+            self.home_tool_x = self.machine.home_tool_x
             if self.x_diameter:
                 self.home_tool_x = self.home_tool_x / 2
-            self.home_tool_y = self.machine_config["channelslist"][self.channel_name]["hometool"]["y"]
-            self.home_tool_z = self.machine_config["channelslist"][self.channel_name]["hometool"]["z"]
+            self.home_tool_y = self.machine.home_tool_y
+            self.home_tool_z = self.machine.home_tool_z
         except KeyError:
             raise ValueError("MachineConfigError: une clé est absente dans le fichier JSON")
         except ValueError:

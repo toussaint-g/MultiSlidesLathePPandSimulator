@@ -7,6 +7,7 @@ import vtk
 from vtkmodules.vtkCommonColor import vtkNamedColors
 
 # Modules internes
+from b_machines_config.machine_parameters import JsonDict
 from c_toolpath_constructor.toolpath_viewer_config_loader import ToolPathConfigLoader
 from c_toolpath_constructor.toolpath_interpeter import ToolPathInterpreter
 
@@ -14,7 +15,7 @@ from c_toolpath_constructor.toolpath_interpeter import ToolPathInterpreter
 class ToolPathViewer:
     """Cette classe permet la lecture et la creation d'un viewer de ficher 3D"""
 
-    def __init__(self, machine_config, channel_name, part_thickness):
+    def __init__(self, machine_config: JsonDict, channel_name: str, part_thickness):
         try:
             self.machine_config = machine_config
             self.channel_name = channel_name

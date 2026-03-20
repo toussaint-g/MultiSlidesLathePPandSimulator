@@ -1,12 +1,16 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 import json
+from typing import TypeAlias
+
+
+JsonDict: TypeAlias = dict[str, object]
 
 
 class MachinesConfigLoader:
     """Cette classe permet de gérer la configuration des machines (json)"""
-    data = {}
-    machines_list = {}
+    data: JsonDict = {}
+    machines_list: dict[str, JsonDict] = {}
 
     @staticmethod
     def load_config():
@@ -15,7 +19,7 @@ class MachinesConfigLoader:
             with open('b_machines_config\\machines_config.json', 'r', encoding='utf-8') as file:
                 MachinesConfigLoader.data = json.load(file)
 
-            MachinesConfigLoader.machines_list = MachinesConfigLoader.data.get('machineslist', {})
+            MachinesConfigLoader.machines_list = MachinesConfigLoader.data.get('machineslist', {})  # type: ignore[assignment]
 
         except FileNotFoundError:
             raise FileNotFoundError(
@@ -38,11 +42,11 @@ class MachinesConfigLoader:
     @staticmethod
     def get_channels_list_for_machine(machine_name: str):
         """Retourne la liste des canaux d'une machine donnée"""
-        machine_config = MachinesConfigLoader.get_machine(machine_name)
-        channels = machine_config.get('channelslist', {})
+        machine_config: JsonDict = MachinesConfigLoader.get_machine(machine_name)
+        channels: JsonDict = machine_config.get('channelslist', {})  # type: ignore[assignment]
         return sorted(channels.keys())
 
     @staticmethod
-    def get_machine(machine_name: str):
+    def get_machine(machine_name: str) -> JsonDict:
         """Retourne le dict de la machine"""
         return MachinesConfigLoader.machines_list.get(machine_name, {})

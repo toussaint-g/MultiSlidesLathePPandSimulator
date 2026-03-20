@@ -6,31 +6,29 @@ import vtk
 
 # Modules internes
 from a_iso_analyzer.iso_interpreter import MoveType
+from b_machines_config.machine_parameters import JsonDict, MachineParameters
 from c_toolpath_constructor.toolpath_builder import ToolPathBuilder
 
 
 class ToolPathInterpreter:
     """Classe qui permet d'interpeter les datas"""
 
-    def __init__(self, machine_config, channel_name, part_thickness):
+    def __init__(self, machine_config: JsonDict, channel_name: str, part_thickness):
         try:
             # Initialisation des variables
-            self.machine_config = machine_config
-            self.channel_name = channel_name
+            self.machine = MachineParameters.from_config(machine_config, channel_name, home_x_mode="part")
             self.part_thickness = part_thickness
             # Data machine
-            self.x_diameter = self.machine_config["machineinformations"]["xdiameter"]
-            self.home_tool_x = self.machine_config["channelslist"][self.channel_name]["hometool"]["x"]
-            if self.x_diameter:
-                self.home_tool_x = self.home_tool_x / 2
-            self.home_tool_y = self.machine_config["channelslist"][self.channel_name]["hometool"]["y"]
-            self.home_tool_z = self.machine_config["channelslist"][self.channel_name]["hometool"]["z"]
-            self.ipartvector = self.machine_config["machineinformations"]["ipartvector"]
-            self.jpartvector = self.machine_config["machineinformations"]["jpartvector"]
-            self.kpartvector = self.machine_config["machineinformations"]["kpartvector"]
-            self.ipathvector = self.machine_config["channelslist"][self.channel_name]["ipathvector"]
-            self.jpathvector = self.machine_config["channelslist"][self.channel_name]["jpathvector"]
-            self.kpathvector = self.machine_config["channelslist"][self.channel_name]["kpathvector"]
+            self.x_diameter = self.machine.x_diameter
+            self.home_tool_x = self.machine.home_tool_x
+            self.home_tool_y = self.machine.home_tool_y
+            self.home_tool_z = self.machine.home_tool_z
+            self.ipartvector = self.machine.ipartvector
+            self.jpartvector = self.machine.jpartvector
+            self.kpartvector = self.machine.kpartvector
+            self.ipathvector = self.machine.ipathvector
+            self.jpathvector = self.machine.jpathvector
+            self.kpathvector = self.machine.kpathvector
         except KeyError:
             raise ValueError("MachineConfigError: une clé est absente dans le fichier JSON")
 

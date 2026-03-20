@@ -13,68 +13,69 @@
         "circularmoveCCW": "G3",
         "timer": "G4",
         "toolnameprefix": "T",
+        "spindlespeedprefix": "S",
+        "programprefix": "O",
+        "feedrateprefix": "F",
+        "blockprefix": "N",
+        "blockincrement": 10,
+        "feedrateperminute": "G98",
+        "feedrateperrevolution": "G99",
         "xyworkplane": "G17",
         "xzworkplane": "G18",
         "yzworkplane": "G19",
         "defaultworkplane": "G17",
-        "activatecaxisindexingBP": "M50",
-        "disablecaxisindexingBP": "M51",
-        "activatecaxisindexingCOP": "M150",
-        "disablecaxisindexingCOP": "M151",
-        "mainspindlecwstart": "M3",
-        "mainspindleccwstart": "M4",
-        "mainspindlestop": "M5",
-        "counterspindlecwstart": "M103",
-        "counterspindleccwstart": "M104",
-        "counterspindlestop": "M105",
+        "coolanton": "M8",
+        "coolantoff": "M9",
+        "endprogram": "M30",
+        "startandendfilecharacter": "%",
         "ipartvector": [-1, 0, 0],
         "jpartvector": [0, 1, 0],
         "kpartvector": [0, 0, -1]
       },
       "channelslist": {
         "1": {
-          "hometool": {"x": 30, "y": 0, "z": 0},
+          "hometool": {"x": 19, "y": 0, "z": 0},
           "ipathvector": [-1, 0, 0],
           "jpathvector": [0, 1, 0],
           "kpathvector": [0, 0, -1],
           "listoftools": [
-            { "toolname": "1", "tooltype": 0, "workplane": [1, 0, 0], "spindlecwstart": "M3", "spindleccwstart": "M4", "spindlestop": "M5" },
-            { "toolname": "2", "tooltype": 0, "workplane": [1, 0, 0], "spindlecwstart": "M3", "spindleccwstart": "M4", "spindlestop": "M5" },
-            { "toolname": "3", "tooltype": 1, "workplane": [1, 0, 0], "spindlecwstart": "M23", "spindleccwstart": "M24", "spindlestop": "M25" },
-            { "toolname": "4", "tooltype": 1, "workplane": [1, 0, 0], "spindlecwstart": "M413", "spindleccwstart": "M414", "spindlestop": "M415" },
-            { "toolname": "5", "tooltype": 1, "workplane": [1, 0, 0], "spindlecwstart": "M423", "spindleccwstart": "M424", "spindlestop": "M425" }
+            { "toolname": "1", "tooltype": 0, "workplane": [1, 0, 0], "spindleclwstart": "M3", "spindlecclwstart": "M4", "spindlestop": "M5", "mainspindletocaxison": "M50", "mainspindletocaxisoff": "M51" },
+            { "toolname": "2", "tooltype": 0, "workplane": [1, 0, 0], "spindleclwstart": "M3", "spindlecclwstart": "M4", "spindlestop": "M5", "mainspindletocaxison": "M50", "mainspindletocaxisoff": "M51" },
+            { "toolname": "3", "tooltype": 1, "workplane": [1, 0, 0], "spindleclwstart": "M23", "spindlecclwstart": "M24", "spindlestop": "M25" },
+            { "toolname": "4", "tooltype": 1, "workplane": [1, 0, 0], "spindleclwstart": "M413", "spindlecclwstart": "M414", "spindlestop": "M415" },
+            { "toolname": "5", "tooltype": 1, "workplane": [1, 0, 0], "spindleclwstart": "M423", "spindlecclwstart": "M424", "spindlestop": "M425" }
           ]
         },
         "2": {
-          "hometool": {"x": -30, "y": 0, "z": 0},
+          "hometool": {"x": -19, "y": 0, "z": 0},
           "ipathvector": [-1, 0, 0],
           "jpathvector": [0, 1, 0],
           "kpathvector": [0, 0, -1],
           "listoftools": [
-            { "toolname": "31", "tooltype": 0, "workplane": [0, 0, 1], "spindlecwstart": "M103", "spindleccwstart": "M104", "spindlestop": "M105" },
-            { "toolname": "32", "tooltype": 1, "workplane": [0, 0, 1], "spindlecwstart": "M123", "spindleccwstart": "M124", "spindlestop": "M125" },
-            { "toolname": "33", "tooltype": 1, "workplane": [0, 0, 1], "spindlecwstart": "M123", "spindleccwstart": "M124", "spindlestop": "M125" },
-            { "toolname": "34", "tooltype": 1, "workplane": [-1, 0, 0], "spindlecwstart": "M123", "spindleccwstart": "M124", "spindlestop": "M125" },
-            { "toolname": "35", "tooltype": 1, "workplane": [0, 0, 1], "spindlecwstart": "M453", "spindleccwstart": "M454", "spindlestop": "M455" },
-            { "toolname": "36", "tooltype": 0, "workplane": [0, 0, 1], "spindlecwstart": "M103", "spindleccwstart": "M104", "spindlestop": "M105" },
-            { "toolname": "37", "tooltype": 0, "workplane": [0, 0, 1], "spindlecwstart": "M103", "spindleccwstart": "M104", "spindlestop": "M105" },
-            { "toolname": "38", "tooltype": 1, "workplane": [-1, 0, 0], "spindlecwstart": "M123", "spindleccwstart": "M124", "spindlestop": "M125" }
+            { "toolname": "31", "tooltype": 0, "workplane": [0, 0, 1], "spindleclwstart": "M103", "spindlecclwstart": "M104", "spindlestop": "M105", "mainspindletocaxison": "M150", "mainspindletocaxisoff": "M151"  },
+            { "toolname": "32", "tooltype": 1, "workplane": [0, 0, 1], "spindleclwstart": "M123", "spindlecclwstart": "M124", "spindlestop": "M125" },
+            { "toolname": "33", "tooltype": 1, "workplane": [0, 0, 1], "spindleclwstart": "M123", "spindlecclwstart": "M124", "spindlestop": "M125" },
+            { "toolname": "34", "tooltype": 1, "workplane": [-1, 0, 0], "spindleclwstart": "M123", "spindlecclwstart": "M124", "spindlestop": "M125" },
+            { "toolname": "35", "tooltype": 1, "workplane": [0, 0, 1], "spindleclwstart": "M453", "spindlecclwstart": "M454", "spindlestop": "M455" },
+            { "toolname": "36", "tooltype": 0, "workplane": [0, 0, 1], "spindleclwstart": "M103", "spindlecclwstart": "M104", "spindlestop": "M105", "mainspindletocaxison": "M150", "mainspindletocaxisoff": "M151"  },
+            { "toolname": "37", "tooltype": 0, "workplane": [0, 0, 1], "spindleclwstart": "M103", "spindlecclwstart": "M104", "spindlestop": "M105", "mainspindletocaxison": "M150", "mainspindletocaxisoff": "M151"  },
+            { "toolname": "38", "tooltype": 1, "workplane": [-1, 0, 0], "spindleclwstart": "M123", "spindlecclwstart": "M124", "spindlestop": "M125" }
           ]
         },
         "3": {
-          "hometool": {"x": 30, "y": 0, "z": 0},
+          "hometool": {"x": 19, "y": 0, "z": 0},
           "ipathvector": [1, 0, 0],
           "jpathvector": [0, 1, 0],
           "kpathvector": [0, 0, -1],
           "listoftools": [
-            { "toolname": "11", "tooltype": 1, "workplane": [1, 0, 0], "spindlecwstart": "M223", "spindleccwstart": "M224", "spindlestop": "M225" },
-            { "toolname": "12", "tooltype": 1, "workplane": [1, 0, 0], "spindlecwstart": "M223", "spindleccwstart": "M224", "spindlestop": "M225" },
-            { "toolname": "13", "tooltype": 0, "workplane": [0, 0, -1], "spindlecwstart": "M3", "spindleccwstart": "M4", "spindlestop": "M5" },
-            { "toolname": "14", "tooltype": 0, "workplane": [0, 0, -1], "spindlecwstart": "M3", "spindleccwstart": "M4", "spindlestop": "M5" },
-            { "toolname": "15", "tooltype": 0, "workplane": [0, 0, -1], "spindlecwstart": "M3", "spindleccwstart": "M4", "spindlestop": "M5" },
-            { "toolname": "16", "tooltype": 0, "workplane": [1, 0, 0], "spindlecwstart": "M3", "spindleccwstart": "M4", "spindlestop": "M5" },
-            { "toolname": "17", "tooltype": 0, "workplane": [1, 0, 0], "spindlecwstart": "M3", "spindleccwstart": "M4", "spindlestop": "M5" },
-            { "toolname": "18", "tooltype": 0, "workplane": [1, 0, 0], "spindlecwstart": "M3", "spindleccwstart": "M4", "spindlestop": "M5" }
+            { "toolname": "11", "tooltype": 1, "workplane": [1, 0, 0], "spindleclwstart": "M223", "spindlecclwstart": "M224", "spindlestop": "M225" },
+            { "toolname": "12", "tooltype": 1, "workplane": [1, 0, 0], "spindleclwstart": "M223", "spindlecclwstart": "M224", "spindlestop": "M225" },
+            { "toolname": "13", "tooltype": 0, "workplane": [0, 0, -1], "spindleclwstart": "M3", "spindlecclwstart": "M4", "spindlestop": "M5", "mainspindletocaxison": "M50", "mainspindletocaxisoff": "M51" },
+            { "toolname": "14", "tooltype": 0, "workplane": [0, 0, -1], "spindleclwstart": "M3", "spindlecclwstart": "M4", "spindlestop": "M5", "mainspindletocaxison": "M50", "mainspindletocaxisoff": "M51" },
+            { "toolname": "15", "tooltype": 0, "workplane": [0, 0, -1], "spindleclwstart": "M3", "spindlecclwstart": "M4", "spindlestop": "M5", "mainspindletocaxison": "M50", "mainspindletocaxisoff": "M51" },
+            { "toolname": "16", "tooltype": 0, "workplane": [1, 0, 0], "spindleclwstart": "M3", "spindlecclwstart": "M4", "spindlestop": "M5", "mainspindletocaxison": "M50", "mainspindletocaxisoff": "M51" },
+            { "toolname": "17", "tooltype": 0, "workplane": [1, 0, 0], "spindleclwstart": "M3", "spindlecclwstart": "M4", "spindlestop": "M5", "mainspindletocaxison": "M50", "mainspindletocaxisoff": "M51" },
+            { "toolname": "18", "tooltype": 0, "workplane": [1, 0, 0], "spindleclwstart": "M3", "spindlecclwstart": "M4", "spindlestop": "M5", "mainspindletocaxison": "M50", "mainspindletocaxisoff": "M51" }
           ]
         }
       }
