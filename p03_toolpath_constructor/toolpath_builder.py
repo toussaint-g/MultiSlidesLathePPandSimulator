@@ -33,23 +33,31 @@ class ToolPathBuilder:
         v = np.cross(n, u)
         return u, v, n
 
-    def create_line(self, points_vtk: vtk.vtkPoints, lines_vtk: vtk.vtkCellArray, start_point, end_point):
-        """Cette methode permet de creer les donnees pour une ligne"""
+    def build_line_points(self, start_point, end_point):
+        """Retourne les points 3D necessaires pour representer une ligne."""
+        return [
+            (float(start_point[0]), float(start_point[1]), float(start_point[2])),
+            (float(end_point[0]), float(end_point[1]), float(end_point[2])),
+        ]
 
-        # Creation points VTK
-        start_point_tmp = points_vtk.InsertNextPoint(start_point[0], start_point[1], start_point[2])
-        end_point_tmp = points_vtk.InsertNextPoint(end_point[0], end_point[1], end_point[2])
+    def create_polyline(self, points_vtk: vtk.vtkPoints, lines_vtk: vtk.vtkCellArray, path_points):
+        """Cree une polyline VTK a partir d'une liste de points 3D."""
+        if len(path_points) < 2:
+            return
 
-        # Creation ligne VTK
-        line_toolpath = vtk.vtkLine()
-        line_toolpath.GetPointIds().SetId(0, start_point_tmp)
-        line_toolpath.GetPointIds().SetId(1, end_point_tmp)
+        point_ids = []
+        for point_x, point_y, point_z in path_points:
+            point_ids.append(points_vtk.InsertNextPoint(point_x, point_y, point_z))
 
-        # Ajout de la courbe dans le vtkCellArray
-        lines_vtk.InsertNextCell(line_toolpath)
+        polyline = vtk.vtkPolyLine()
+        polyline.GetPointIds().SetNumberOfIds(len(point_ids))
+        for i, point_id in enumerate(point_ids):
+            polyline.GetPointIds().SetId(i, point_id)
 
-    def create_circle(self, points_vtk: vtk.vtkPoints, lines_vtk: vtk.vtkCellArray, start_point, end_point, radius, resolution_cercle, direction_cw, work_plane):
-        """Cette methode permet de creer les donnees pour un cercle dans un plan donne."""
+        lines_vtk.InsertNextCell(polyline)
+
+    def build_circle_points(self, start_point, end_point, radius, resolution_cercle, direction_cw, work_plane):
+        """Retourne les points 3D necessaires pour representer un cercle dans un plan donne."""
 
         # Le viewer trajectoire travaille en XYZ : ignorer une eventuelle 4e composante (axe C).
         np_start_point = np.array(start_point[:3], dtype=float)
@@ -111,7 +119,7 @@ class ToolPathBuilder:
         angles = np.linspace(angle_start, angle_end, num_segments + 1)
 
         n_step = (en - sn) / num_segments
-        point_ids = []
+        path_points = []
         for i, theta in enumerate(angles):
             p2 = np.array(
                 [
@@ -121,14 +129,6 @@ class ToolPathBuilder:
             )
             pn = sn + i * n_step
             p3 = p2[0] * u + p2[1] * v + pn * n
-            pid = points_vtk.InsertNextPoint(p3[0], p3[1], p3[2])
-            point_ids.append(pid)
+            path_points.append((float(p3[0]), float(p3[1]), float(p3[2])))
 
-        # Creation polyligne VTK avec tous les points generes
-        polyline = vtk.vtkPolyLine()
-        polyline.GetPointIds().SetNumberOfIds(len(point_ids))
-        for i, pid in enumerate(point_ids):
-            polyline.GetPointIds().SetId(i, pid)
-
-        # Ajout de la courbe dans le vtkCellArray
-        lines_vtk.InsertNextCell(polyline)
+        return path_points

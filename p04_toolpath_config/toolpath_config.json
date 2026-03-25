@@ -12,6 +12,8 @@
 		"pathwidth": 2,
 		"rapidmovecolor": "Red",
 		"workmovecolor": "Green",
+		"cursorpointcolor": "Yellow",
+		"cursorpointsize": 6,
 		"circleresolution": 0.1
 	}
 }

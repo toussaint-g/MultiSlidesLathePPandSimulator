@@ -14,35 +14,35 @@ import os
 import re
 
 # Modules internes
-from a_iso_analyzer.iso_interpreter import IsoInterpreter
-from a_iso_analyzer.iso_analyzer_writer import IsoAnalyzerWriter
-from b_machines_config.machine_parameters import JsonDict
-from b_machines_config.machines_config_loader import MachinesConfigLoader
-from c_toolpath_constructor.toolpath_viewer import ToolPathViewer
-from c_toolpath_constructor.toolpath_viewer_config_loader import ToolPathConfigLoader
-# from d_iso_generator.apt_interpreter import AptInterpreter
-# from d_iso_generator.apt_analyser_writer import AptAnalyserWriter
-from d_iso_generator.apt2iso import convert_file
+from p01_iso_analyzer.iso_interpreter import IsoInterpreter
+from p01_iso_analyzer.iso_analyzer_writer import IsoAnalyzerWriter
+from p02_machines_config.machine_parameters import JsonDict
+from p02_machines_config.machines_config_loader import MachinesConfigLoader
+from p03_toolpath_constructor.toolpath_viewer import ToolPathViewer
+from p04_toolpath_config.toolpath_config_loader import ToolPathConfigLoader
+# from p05_iso_generator.apt_interpreter import AptInterpreter
+# from p05_iso_generator.apt_analyser_writer import AptAnalyserWriter
+from p05_iso_generator.apt2iso import convert_file
 
 
-# Fonction sélection de fichier
+# Fonction selection de fichier
 def file_select(file_type, file_ext, label, update_calculate_button):
-    """ Fonction de sélection de fichier """
-    file = tkinter.filedialog.askopenfilename(title="Sélectionner un fichier", filetypes=[(file_type, file_ext)])
+    """ Fonction de selection de fichier """
+    file = tkinter.filedialog.askopenfilename(title="Selectionner un fichier", filetypes=[(file_type, file_ext)])
     if file:
         label.config(text=file)
-        update_calculate_button()  # Met Ã  jour l'état du bouton "Calculer"
+        update_calculate_button()  # Met A  jour l'etat du bouton "Calculer"
 
 
-# Fonction sélection de dossier
+# Fonction selection de dossier
 def folder_select(label):
-    """ Fonction de sélection de dossier """
-    folder = tkinter.filedialog.askdirectory(title="Sélectionner un dossier")
+    """ Fonction de selection de dossier """
+    folder = tkinter.filedialog.askdirectory(title="Selectionner un dossier")
     if folder:
         label.config(text=folder)
 
 
-# Fonction pour nom de fichier Ã  la date et heure du jour
+# Fonction pour nom de fichier A  la date et heure du jour
 def get_datetime_string():
     """ Retourne la date et l'heure sous la forme YYYY-MM-DD_HH-MM-SS """
     return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -63,21 +63,21 @@ def apt_treatment(path_apt_file, path_export_file, machine_name, channel_name):
     # Charge les config
     MachinesConfigLoader.load_config()
 
-    # Récupère la config de la machine sélectionnée
+    # Recupere la config de la machine selectionnee
     machine_config: JsonDict = MachinesConfigLoader.get_machine(machine_name)
 
     # Instanciation des classes
     # obj_interpreter = AptInterpreter(machine_config, channel_name) 
     # obj_writer = AptAnalyserWriter(machine_config)
 
-    # list_datas = obj_interpreter.analyze(path_apt_file) # Récup data
-    # obj_writer.write_iso_file(Path(path_export_file).with_suffix(".nc"), path_apt_file, list_datas) # Création du rapport
+    # list_datas = obj_interpreter.analyze(path_apt_file) # Recup data
+    # obj_writer.write_iso_file(Path(path_export_file).with_suffix(".nc"), path_apt_file, list_datas) # Creation du rapport
 
     #display_results(path_export_file)
 
     try:
         if not path_apt_file:
-            messagebox.showwarning("APT manquant", "Sélectionne un fichier APT source.")
+            messagebox.showwarning("APT manquant", "Selectionne un fichier APT source.")
             return
 
         path_export_file.mkdir(parents=True, exist_ok=True)
@@ -87,7 +87,7 @@ def apt_treatment(path_apt_file, path_export_file, machine_name, channel_name):
 
         convert_file(str(in_path), str(out_path), machine_config, channel_name)
 
-        messagebox.showinfo("Conversion terminée", f"ISO généré :\n{out_path}")
+        messagebox.showinfo("Conversion terminee", f"ISO genere :\n{out_path}")
 
     except Exception as e:
         messagebox.showerror("Erreur conversion", str(e))
@@ -110,31 +110,31 @@ def gcode_treatment(path_gcode_file, path_export_file, machine_name, channel_nam
     # Charge les config
     MachinesConfigLoader.load_config()
 
-    # RécupÃ¨re la config de la machine sélectionnée
+    # Recupere la config de la machine selectionnee
     machine_config: JsonDict = MachinesConfigLoader.get_machine(machine_name)
 
     # Instanciation des classes
     obj_interpreter = IsoInterpreter(machine_config, channel_name) 
     obj_writer = IsoAnalyzerWriter(machine_config)
 
-    list_datas = obj_interpreter.analyze(path_gcode_file) # Récup data
-    obj_writer.write_report(Path(path_export_file).with_suffix(".txt"), path_gcode_file, list_datas) # Création du rapport
-    obj_writer.write_debug_file(Path(path_export_file).with_suffix(".debug"), path_gcode_file, list_datas) # Création du fichier debug
+    list_datas = obj_interpreter.analyze(path_gcode_file) # Recup data
+    obj_writer.write_report(Path(path_export_file).with_suffix(".txt"), path_gcode_file, list_datas) # Creation du rapport
+    obj_writer.write_debug_file(Path(path_export_file).with_suffix(".debug"), path_gcode_file, list_datas) # Creation du fichier debug
 
     display_results(path_export_file)
 
 
 def display_results(path_export_file):
-    """ Affiche la fenêtre avec le résultat de l'analyse du G Code """
+    """ Affiche la fenetre avec le resultat de l'analyse du G Code """
 
     result_window = tk.Toplevel()
-    result_window.title("PPandSimulatorForMultiSlidesLathe: Résultat")
+    result_window.title("PPandSimulatorForMultiSlidesLathe: Resultat")
     result_window.state('zoomed')
 
     result_frame = tk.Frame(result_window)
     result_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-    result_label = tk.Label(result_frame, text="Résultat :", font=("Segoe UI", 18, "bold"))
+    result_label = tk.Label(result_frame, text="Resultat :", font=("Segoe UI", 18, "bold"))
     result_label.pack(pady=10, anchor="w")
 
     # Rapport
@@ -175,7 +175,7 @@ def display_results(path_export_file):
 
 # Fonction traitement G-Code
 def viewer_launch(path_gcode_file, stl_path_file, machine_name, channel_name, part_thickness):
-    """ Lance la visualisation des trajectoires à partir du G-Code et du STL """
+    """ Lance la visualisation des trajectoires a partir du G-Code et du STL """
     # Charge les config
     MachinesConfigLoader.load_config()
     ToolPathConfigLoader.load_config()
@@ -186,7 +186,7 @@ def viewer_launch(path_gcode_file, stl_path_file, machine_name, channel_name, pa
     obj_interpreter = IsoInterpreter(machine_config, channel_name) 
     obj_toolpathviewer = ToolPathViewer(machine_config, channel_name, part_thickness)
 
-    # Récup datas g-code
+    # Recup datas g-code
     list_datas = obj_interpreter.analyze(path_gcode_file)
 
     # Start viewer
@@ -194,7 +194,7 @@ def viewer_launch(path_gcode_file, stl_path_file, machine_name, channel_name, pa
 
 
 def update_channel_combo(selected_machine, channel_combo, selected_channel):
-    """ Met à jour la liste des canaux disponibles en fonction de la machine sélectionnée """
+    """ Met a jour la liste des canaux disponibles en fonction de la machine selectionnee """
     machine_name = selected_machine.get()
     updated_channels = MachinesConfigLoader.get_channels_list_for_machine(machine_name)
     channel_combo["values"] = updated_channels
@@ -202,44 +202,44 @@ def update_channel_combo(selected_machine, channel_combo, selected_channel):
 
 
 def open_machine_image_for(machine_name):
-    """ Ouvre l'image de la machine sélectionnée dans le visualiseur d'images par défaut du système """
+    """ Ouvre l'image de la machine selectionnee dans le visualiseur d'images par defaut du systeme """
     machine_config: JsonDict = MachinesConfigLoader.get_machine(machine_name)
     try:
         rel = machine_config["imgkinematic"]
     except KeyError:
-        raise ValueError("MachineConfigError: une clé est absente dans le fichier JSON")
+        raise ValueError("MachineConfigError: une cle est absente dans le fichier JSON")
 
     base = Path(__file__).parent
     image_path = Path(base / rel)
     if not image_path.exists():
-        raise ValueError(f"MachineConfigError: l'image spécifiée est introuvable : {image_path}")
+        raise ValueError(f"MachineConfigError: l'image specifiee est introuvable : {image_path}")
     os.startfile(image_path)
 
 
 def nombre_decimal_negatif_valide(nouveau_texte):
-    """ Valide que l'entrée est un nombre décimal négatif ou un état intermédiaire autorisé """
+    """ Valide que l'entree est un nombre decimal negatif ou un etat intermediaire autorise """
     if nouveau_texte in ("", "-", ".", ",", "-.", "-,"):
         return True
     return re.fullmatch(r"-?(\d+([.,]\d*)?|[.,]\d+)", nouveau_texte) is not None
 
 
 def update_calculate_button(label_path, buttons):
-    """ Active ou désactive une liste de boutons selon la sélection ISO """
+    """ Active ou desactive une liste de boutons selon la selection ISO """
     state = "normal" if label_path.cget("text") else "disabled"
     for button in buttons:
         button.config(state=state)
 
 
-# Point d'entrée app
+# Point d'entree app
 def main():
-    """Point d'entrée de l'application"""
+    """Point d'entree de l'application"""
 
     # Charge les config
     MachinesConfigLoader.load_config() 
 
     style = Style(theme="darkly") 
 
-    # Création form avec nom & dimension
+    # Creation form avec nom & dimension
     form = style.master
     form.title("PPandSimulatorForMultiSlidesLathe")
     form.state('zoomed')
@@ -248,7 +248,7 @@ def main():
     main_frame = tb.Frame(form, padding=20)
     main_frame.pack(expand=True, fill="both")
 
-    # 3 colonnes de même largeur
+    # 3 colonnes de meme largeur
     for col in range(3):
         main_frame.grid_columnconfigure(col, weight=1, uniform="main_cols")
 
@@ -256,7 +256,7 @@ def main():
     icon_app = Image.open("img/iconform.png")
     #icon_app = icon_app.resize((32, 32))
     icon_app_tk = ImageTk.PhotoImage(icon_app) # Conversion image en format Tkinter
-    form.iconphoto(True, icon_app_tk) # Appliquer l'icône au formulaire
+    form.iconphoto(True, icon_app_tk) # Appliquer l'icone au formulaire
 
     # Titre
     tb.Label(
@@ -290,7 +290,7 @@ def main():
     tb.Label(main_frame, text="Fichier APT :", font=("Segoe UI", 16)).grid(column=0, row=6, sticky="w", padx=5, pady=5)
     label_apt_for_pp = tb.Label(main_frame, text="", width=50, bootstyle="secondary")
     label_apt_for_pp.grid(column=0, row=7, sticky="w")
-    tb.Button(main_frame, text="Sélectionner", bootstyle="primary", 
+    tb.Button(main_frame, text="Selectionner", bootstyle="primary", 
               command=lambda: file_select("Fichier APT", "*.aptsource", label_apt_for_pp, 
                                           lambda: update_calculate_button(label_apt_for_pp, [calculate_button_for_pp]))).grid(column=0, row=8, sticky="w", padx=5, pady=5)
 
@@ -298,7 +298,7 @@ def main():
     tb.Label(main_frame, text="Dossier de sortie :", font=("Segoe UI", 16)).grid(column=0, row=9, sticky="w", padx=5, pady=5)
     label_output_folder_for_pp = tb.Label(main_frame, text="C:\\Temp", width=50, bootstyle="secondary")
     label_output_folder_for_pp.grid(column=0, row=10, sticky="w")
-    tb.Button(main_frame, text="Sélectionner", bootstyle="primary", 
+    tb.Button(main_frame, text="Selectionner", bootstyle="primary", 
               command=lambda: folder_select(label_output_folder_for_pp)).grid(column=0, row=11, sticky="w", padx=5, pady=5)
 
     # Ligne vide
@@ -306,7 +306,7 @@ def main():
 
     # Section machine
     tb.Label(main_frame, text="Machine cible :", font=("Segoe UI", 16)).grid(column=0, row=13, sticky="w", padx=5, pady=5)
-    # Données fournies par le JSON
+    # Donnees fournies par le JSON
     machines_list_for_pp = MachinesConfigLoader.get_machines_names()
     selected_machine_for_pp = tk.StringVar(value=machines_list_for_pp[0] if machines_list_for_pp else "")
     machine_combo_for_pp = tb.Combobox(
@@ -321,7 +321,7 @@ def main():
 
     # Section canal machine
     tb.Label(main_frame, text="Canal de la machine :", font=("Segoe UI", 16)).grid(column=0, row=15, sticky="w", padx=5, pady=5)
-    # Données fournies par le JSON
+    # Donnees fournies par le JSON
     channels_list_for_pp = MachinesConfigLoader.get_channels_list_for_machine(selected_machine_for_pp.get())
     selected_channel_for_pp = tk.StringVar(value=channels_list_for_pp[0] if channels_list_for_pp else "")
     channel_combo_for_pp = tb.Combobox(
@@ -342,17 +342,17 @@ def main():
     # Ligne vide
     tb.Label(main_frame, text="", font=("Segoe UI", 8)).grid(column=0, row=17, sticky="w", padx=5, pady=5)
 
-    # Section générer le fichier ISO
-    tb.Label(main_frame, text="Générer le fichier ISO :", font=("Segoe UI", 16)).grid(column=0, row=18, sticky="w", padx=5, pady=5)
+    # Section generer le fichier ISO
+    tb.Label(main_frame, text="Generer le fichier ISO :", font=("Segoe UI", 16)).grid(column=0, row=18, sticky="w", padx=5, pady=5)
 
-    # Section calculer les données
+    # Section calculer les donnees
     calculate_button_for_pp = tb.Button(main_frame, text="Start", bootstyle="success", command=lambda: apt_treatment(
         Path(label_apt_for_pp.cget("text")),
         Path(label_output_folder_for_pp.cget("text")) / get_datetime_string(),
         selected_machine_for_pp.get(),
         selected_channel_for_pp.get()))
     calculate_button_for_pp.grid(column=0, row=19, sticky="w", pady=5)
-    calculate_button_for_pp.config(state="disabled")  # Désactiver au début
+    calculate_button_for_pp.config(state="disabled")  # Desactiver au debut
 
 
 
@@ -365,7 +365,7 @@ def main():
     tb.Label(main_frame, text="Fichier ISO :", font=("Segoe UI", 16)).grid(column=1, row=6, sticky="w", padx=5, pady=5)
     label_iso_file_for_analyzer = tb.Label(main_frame, text="", width=50, bootstyle="secondary")
     label_iso_file_for_analyzer.grid(column=1, row=7, sticky="w")
-    tb.Button(main_frame, text="Sélectionner", bootstyle="primary", 
+    tb.Button(main_frame, text="Selectionner", bootstyle="primary", 
               command=lambda: file_select("Fichier ISO", "*.anc;*.nc;*.txt;*.path1;*.path2;*.path3", label_iso_file_for_analyzer, 
                                           lambda: update_calculate_button(label_iso_file_for_analyzer, [calculate_button_for_analyzer, visualize_button_for_analyzer]))).grid(column=1, row=8, sticky="w", padx=5, pady=5)
 
@@ -373,12 +373,12 @@ def main():
     tb.Label(main_frame, text="Dossier de sortie :", font=("Segoe UI", 16)).grid(column=1, row=9, sticky="w", padx=5, pady=5)
     label_output_folder_for_analyzer = tb.Label(main_frame, text="C:\\Temp", width=50, bootstyle="secondary")
     label_output_folder_for_analyzer.grid(column=1, row=10, sticky="w")
-    tb.Button(main_frame, text="Sélectionner", bootstyle="primary", 
+    tb.Button(main_frame, text="Selectionner", bootstyle="primary", 
               command=lambda: folder_select(label_output_folder_for_analyzer)).grid(column=1, row=11, sticky="w", padx=5, pady=5)
 
     # Section machine
     tb.Label(main_frame, text="Machine cible :", font=("Segoe UI", 16)).grid(column=1, row=13, sticky="w", padx=5, pady=5)
-    # Données fournies par le JSON
+    # Donnees fournies par le JSON
     machines_list_for_analyzer = MachinesConfigLoader.get_machines_names()
     selected_machine_for_analyzer = tk.StringVar(value=machines_list_for_analyzer[0] if machines_list_for_analyzer else "")
     machine_combo_for_analyzer = tb.Combobox(
@@ -393,7 +393,7 @@ def main():
 
     # Section canal machine
     tb.Label(main_frame, text="Canal de la machine :", font=("Segoe UI", 16)).grid(column=1, row=15, sticky="w", padx=5, pady=5)
-    # Données fournies par le JSON
+    # Donnees fournies par le JSON
     channels_list_for_analyzer = MachinesConfigLoader.get_channels_list_for_machine(selected_machine_for_analyzer.get())
     selected_channel_for_analyzer = tk.StringVar(value=channels_list_for_analyzer[0] if channels_list_for_analyzer else "")
     channel_combo_for_analyzer = tb.Combobox(
@@ -411,7 +411,7 @@ def main():
         lambda _event: update_channel_combo(selected_machine_for_analyzer, channel_combo_for_analyzer, selected_channel_for_analyzer),
     )
 
-    # Section calculer les données
+    # Section calculer les donnees
     tb.Label(main_frame, text="Analyser le fichier ISO :", font=("Segoe UI", 16)).grid(column=1, row=18, sticky="w", padx=5, pady=5)    
     calculate_button_for_analyzer = tb.Button(main_frame, text="Start", bootstyle="success", command=lambda: gcode_treatment(
         Path(label_iso_file_for_analyzer.cget("text")),
@@ -419,20 +419,20 @@ def main():
         selected_machine_for_analyzer.get(),
         selected_channel_for_analyzer.get()))
     calculate_button_for_analyzer.grid(column=1, row=19, sticky="w", pady=5)
-    calculate_button_for_analyzer.config(state="disabled")  # Désactiver au début
+    calculate_button_for_analyzer.config(state="disabled")  # Desactiver au debut
 
 
 
     # Colonne 3
     # Section titre simulateur
     tb.Label(main_frame, text="Zone simulation :", font=("Segoe UI", 20)).grid(column=2, row=3, sticky="w", padx=5, pady=5)
-    tb.Label(main_frame, text="Pour la simulation des trajectoires des fichiers ISO.\n-> Sélection du fichier à simuler dans la zone ""analyse""", font=("Segoe UI", 14)).grid(column=2, row=4, sticky="w", padx=5, pady=5)
+    tb.Label(main_frame, text="Pour la simulation des trajectoires des fichiers ISO.\n-> Selection du fichier a simuler dans la zone ""analyse""", font=("Segoe UI", 14)).grid(column=2, row=4, sticky="w", padx=5, pady=5)
 
     # Section STL
     tb.Label(main_frame, text="Fichier STL :", font=("Segoe UI", 16)).grid(column=2, row=6, sticky="w", padx=5, pady=5)
     label_stl = tb.Label(main_frame, text="", width=50, bootstyle="secondary")
     label_stl.grid(column=2, row=7, sticky="w", padx=5)
-    tb.Button(main_frame, text="Sélectionner", bootstyle="primary", 
+    tb.Button(main_frame, text="Selectionner", bootstyle="primary", 
               command=lambda: file_select("Fichier STL", "*.stl", label_stl, 
                                           lambda: update_calculate_button(label_iso_file_for_analyzer, [calculate_button_for_analyzer, visualize_button_for_analyzer]))).grid(column=2, row=8, sticky="w", padx=5, pady=5)
 
@@ -444,11 +444,11 @@ def main():
                                  command=lambda: open_machine_image_for(selected_machine_for_analyzer.get()))
     visualize_button_for_analyzer.grid(column=2, row=14, sticky="w", padx=5, pady=5)
 
-    # Section décalage pièce
-    tb.Label(main_frame, text="Epaisseur pièce (pour déc COP) :", 
+    # Section decalage piece
+    tb.Label(main_frame, text="Epaisseur piece (pour dec COP) :", 
              font=("Segoe UI", 16)).grid(column=2, row=15, sticky="w", padx=5, pady=5)
     
-    # Validation de l'entrée pour n'autoriser que les nombres décimaux négatifs et les états intermédiaires
+    # Validation de l'entree pour n'autoriser que les nombres decimaux negatifs et les etats intermediaires
     vcmd = (form.register(nombre_decimal_negatif_valide), "%P")
     part_thickness_var = tk.DoubleVar(value=0.0)
     part_thickness = tb.Entry(
@@ -470,7 +470,7 @@ def main():
         selected_channel_for_analyzer.get(),
         part_thickness_var.get()))
     visualize_button_for_analyzer.grid(column=2, row=19, sticky="w", padx=5, pady=5)
-    visualize_button_for_analyzer.config(state="disabled")  # Désactiver au début
+    visualize_button_for_analyzer.config(state="disabled")  # Desactiver au debut
 
     update_calculate_button(
         label_path=label_iso_file_for_analyzer,
@@ -481,10 +481,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
 
 

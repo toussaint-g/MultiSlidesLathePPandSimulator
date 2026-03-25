@@ -3,11 +3,11 @@
 import math
 import re
 from enum import Enum
-from b_machines_config.machine_parameters import JsonDict, MachineParameters, normalize_gm_code
+from p02_machines_config.machine_parameters import JsonDict, MachineParameters, normalize_gm_code
 
 
 def _build_gm_code_pattern(code):
-    """Construit un regex tolérant les zéros à gauche sur la partie numérique."""
+    """Construit un regex tolerant les zeros a gauche sur la partie numerique."""
     normalized_code = normalize_gm_code(code)
     match = re.fullmatch(r'([A-Z]+)(\d+)', normalized_code)
     if not match:
@@ -49,15 +49,15 @@ class IsoInterpreter:
             self.home_tool_y = self.machine.home_tool_y
             self.home_tool_z = self.machine.home_tool_z
         except KeyError:
-            raise ValueError("MachineConfigError: une clé est absente dans le fichier JSON")
+            raise ValueError("MachineConfigError: une cle est absente dans le fichier JSON")
         except ValueError:
             raise ValueError("MachineConfigError: code plan de travail invalide dans le fichier JSON")
 
 
     def analyze(self, path):
-        """Cette méthode vient extraire les données utiles de chaque ligne du GCode et les stocker dans une liste d'objet"""
+        """Cette methode vient extraire les donnees utiles de chaque ligne du GCode et les stocker dans une liste d'objet"""
 
-        # Liste qui va stocker les objets ligne avec les données utiles pour le rapport
+        # Liste qui va stocker les objets ligne avec les donnees utiles pour le rapport
         lines = []
 
         obj_modal = Modal(machine_parameters=self.machine)
@@ -66,7 +66,7 @@ class IsoInterpreter:
         # Ouverture du fichier GCode
         with open(path, 'r') as gcode_file:
 
-            # Expressions régulières pour extraire les données des lignes de GCode
+            # Expressions regulieres pour extraire les donnees des lignes de GCode
             # Nombre CNC robuste : 10 | -10 | +10 | 10.5 | .5 | - .5 | 10,5 | 1e-3 | -2.3E+4
             NUM = r'[-+]?(?:\d+(?:[.,]\d*)?|[.,]\d+)(?:[eE][-+]?\d+)?'
             pattern_x        = re.compile(rf'(?<![A-Za-z])X({NUM})')
@@ -79,7 +79,7 @@ class IsoInterpreter:
             pattern_k        = re.compile(rf'(?<![A-Za-z])K({NUM})')
             pattern_feedrate = re.compile(rf'(?<![A-Za-z])F({NUM})')
             # Pattern pour extraire les info
-            pattern_tool = re.compile(r'(?<![A-Za-z])T(\d{2})(\d{2})(?!\d)') # T suivi de 2 chiffres pour le numéro d'outil et 2 chiffres pour le correcteur d'outil, sans chiffre après
+            pattern_tool = re.compile(r'(?<![A-Za-z])T(\d{2})(\d{2})(?!\d)') # T suivi de 2 chiffres pour le numero d'outil et 2 chiffres pour le correcteur d'outil, sans chiffre apres
             pattern_rapid_move = _build_gm_code_pattern(self.rapid_move_code)
             pattern_linear_move = _build_gm_code_pattern(self.linear_move_code)
             pattern_circular_move_cw = _build_gm_code_pattern(self.circular_move_CW_code)
@@ -114,7 +114,7 @@ class IsoInterpreter:
                 match_work_plane_xz = pattern_work_plane_xz.search(line)
                 match_work_plane_yz = pattern_work_plane_yz.search(line)
 
-                # Récupération des coordonnées de position et du rayon
+                # Recuperation des coordonnees de position et du rayon
                 if match_x and not match_timer:
                     if self.x_diameter:
                         position_x = float(match_x.group(1)) / 2
@@ -138,14 +138,14 @@ class IsoInterpreter:
                 else:
                     position_c = obj_modal.position_c
                 
-                # R dans les mouvements circulaires : si R est présent on le prend,
-                # sinon on le calcule à partir des IJK ou on prend le dernier R utilisé (stocké dans les données modales)
+                # R dans les mouvements circulaires : si R est present on le prend,
+                # sinon on le calcule a partir des IJK ou on prend le dernier R utilise (stocke dans les donnees modales)
                 if match_radius:
                     radius = float(match_radius.group(1))
                 else:
                     radius = obj_modal.radius
 
-                # Calcul du rayon pour les mouvements circulaires et détermination du plan de travail
+                # Calcul du rayon pour les mouvements circulaires et determination du plan de travail
                 work_plane = obj_modal.work_plane
                 if match_i and match_j:
                     radius = math.sqrt((float(match_i.group(1))) ** 2 + (float(match_j.group(1))) ** 2)
@@ -157,7 +157,7 @@ class IsoInterpreter:
                     radius = math.sqrt((float(match_j.group(1))) ** 2 + (float(match_k.group(1))) ** 2)
                     work_plane = self.work_plane_by_code[self.yz_work_plane_code]
                 
-                # Récupération de l'avance, de l'outil et du correcteur d'outil
+                # Recuperation de l'avance, de l'outil et du correcteur d'outil
                 if match_feedrate:
                     feedrate = float(match_feedrate.group(1))
                 else:
@@ -175,7 +175,7 @@ class IsoInterpreter:
                     tool = obj_modal.tool
                     tool_offset = obj_modal.tool_offset
 
-                # Récupération du type de mouvement et du mode (absolu/incrémental)
+                # Recuperation du type de mouvement et du mode (absolu/incremental)
                 if match_move_rapid:
                     move = self.rapid_move_code
                 elif match_move_linear:
@@ -226,7 +226,7 @@ class IsoInterpreter:
                     else:
                         move_type = MoveType.CIRCULAR_MOVE_CCW
 
-                # Récupération du plan de travail
+                # Recuperation du plan de travail
                 if match_work_plane_xy:
                     work_plane = self.work_plane_by_code[self.xy_work_plane_code]
                 elif match_work_plane_xz:
@@ -234,7 +234,7 @@ class IsoInterpreter:
                 elif match_work_plane_yz:
                     work_plane = self.work_plane_by_code[self.yz_work_plane_code]
 
-                # Récupération des différents temps
+                # Recuperation des differents temps
                 # Calcul du temps de mouvement et du temps productif
                 if move == self.rapid_move_code:
                     time = obj_mathematical_functions.mouvement_time(distance, self.rapidfeedrate)
@@ -247,7 +247,7 @@ class IsoInterpreter:
                 if match_tool:
                     time = time + (self.change_tool_time / 60)
 
-                # Création de l'objet ligne et ajout à la liste
+                # Creation de l'objet ligne et ajout a la liste
                 obj_line = Line(
                     line,
                     tool,
@@ -267,7 +267,7 @@ class IsoInterpreter:
                 
                 lines.append(obj_line)
 
-                # Mise à jour des données modales
+                # Mise a jour des donnees modales
                 obj_modal.position_x = position_x
                 obj_modal.position_y = position_y
                 obj_modal.position_z = position_z
@@ -290,7 +290,7 @@ class MathematicalFunctions:
         self.calculation_tolerance = calculation_tolerance
 
     def linear_distance_3D(self, start_point_x, start_point_y, start_point_z, end_point_x, end_point_y, end_point_z):
-        """Cette méthode retourne la distance entre les points"""
+        """Cette methode retourne la distance entre les points"""
 
         distance = math.sqrt(
             (end_point_x - start_point_x) ** 2
@@ -300,7 +300,7 @@ class MathematicalFunctions:
         return distance
 
     def circular_distance_3D(self, start_point_x, start_point_y, start_point_z, end_point_x, end_point_y, end_point_z, radius):
-        """Classe qui permet de calculer la longueur d'un arc. Il tient également compte d'un éventuel mouvement sur le 3ème axe (3d)"""
+        """Classe qui permet de calculer la longueur d'un arc. Il tient egalement compte d'un eventuel mouvement sur le 3eme axe (3d)"""
 
         # Milieu du segment reliant start et end
         mx = (start_point_x + end_point_x) / 2
@@ -340,20 +340,20 @@ class MathematicalFunctions:
         angle2 = math.atan2(end_point_y - cy, end_point_x - cx)
         angle = abs(angle2 - angle1)
 
-        # Si l'angle dépasse 180°, on prend l'arc le plus court
+        # Si l'angle depasse 180, on prend l'arc le plus court
         if angle > math.pi:
             angle = 2 * math.pi - angle
 
         # Calcul de la longueur de l'arc
         arc_length = radius * angle
 
-        # Calcul distance 3d si hélicoïdal
+        # Calcul distance 3d si helicoidal
         arc_length_3d = math.sqrt((arc_length ** 2) + (abs(end_point_z - start_point_z) ** 2))
 
         return arc_length_3d
 
     def mouvement_time(self, distance, feedrate):
-        """Cette méthode retourne la durée pour parcourir une certaine distance"""
+        """Cette methode retourne la duree pour parcourir une certaine distance"""
         try:
             return distance / feedrate
         except ZeroDivisionError:
@@ -361,7 +361,7 @@ class MathematicalFunctions:
             return 0
     
     def calculate_coordinates_from_c_axis(self, position_x, position_y, position_c):
-        """ Calcul des coordonnées X et Y en fonction de C"""
+        """ Calcul des coordonnees X et Y en fonction de C"""
         if self.x_diameter:
             position_x_for_c_axis = ((position_x / 2) * math.cos(math.radians(position_c)) - position_y * math.sin(math.radians(position_c))) * 2
             position_y_for_c_axis = (position_x / 2) * math.sin(math.radians(position_c)) + position_y * math.cos(math.radians(position_c))
@@ -372,7 +372,7 @@ class MathematicalFunctions:
 
 
 class Modal:
-    """Classe qui permet de mémoriser les fonctions modales du GCode"""
+    """Classe qui permet de memoriser les fonctions modales du GCode"""
 
     def __init__(self, machine_parameters: MachineParameters):
 
@@ -392,7 +392,7 @@ class Modal:
             self.home_tool_y = self.machine.home_tool_y
             self.home_tool_z = self.machine.home_tool_z
         except KeyError:
-            raise ValueError("MachineConfigError: une clé est absente dans le fichier JSON")
+            raise ValueError("MachineConfigError: une cle est absente dans le fichier JSON")
         except ValueError:
             raise ValueError("MachineConfigError: code plan de travail invalide dans le fichier JSON")
 
@@ -407,7 +407,7 @@ class Modal:
 
 
 class Line:
-    """Classe qui permet de mémoriser le contenu utile au rapport des lignes du G-Code"""
+    """Classe qui permet de memoriser le contenu utile au rapport des lignes du G-Code"""
 
     def __init__(self, g_code_line, tool_number, tool_offset, distance, distance_in_material, time, productive_time, 
                  move_type, radius, feedrate, endpoint_x, endpoint_y, endpoint_z, endpoint_c, work_plane):
@@ -428,7 +428,7 @@ class Line:
         self.work_plane = work_plane
 
 class MoveType(Enum):
-    """Enum pour mémoriser les types de mouvement par ligne"""
+    """Enum pour memoriser les types de mouvement par ligne"""
     ANY = -1
     RAPID_MOVE = 0
     LINEAR_MOVE = 1
@@ -436,7 +436,7 @@ class MoveType(Enum):
     CIRCULAR_MOVE_CCW = 3  # Sens anti-horaire
 
 class WorkPlaneType(Enum):
-    """Enum pour mémoriser les types de plan de travail"""
+    """Enum pour memoriser les types de plan de travail"""
     XY = [0.0, 0.0, 1.0]
     XZ = [0.0, 1.0, 0.0]
     YZ = [1.0, 0.0, 0.0]

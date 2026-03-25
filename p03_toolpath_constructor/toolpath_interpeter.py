@@ -5,9 +5,9 @@ import math
 import vtk
 
 # Modules internes
-from a_iso_analyzer.iso_interpreter import MoveType
-from b_machines_config.machine_parameters import JsonDict, MachineParameters
-from c_toolpath_constructor.toolpath_builder import ToolPathBuilder
+from p01_iso_analyzer.iso_interpreter import MoveType
+from p02_machines_config.machine_parameters import JsonDict, MachineParameters
+from p03_toolpath_constructor.toolpath_builder import ToolPathBuilder
 
 
 class ToolPathInterpreter:
@@ -30,7 +30,7 @@ class ToolPathInterpreter:
             self.jpathvector = self.machine.jpathvector
             self.kpathvector = self.machine.kpathvector
         except KeyError:
-            raise ValueError("MachineConfigError: une clé est absente dans le fichier JSON")
+            raise ValueError("MachineConfigError: une cle est absente dans le fichier JSON")
 
     @staticmethod
     def _extract_axis_sign(vector):
@@ -61,80 +61,106 @@ class ToolPathInterpreter:
         symmetry_plane_vector = self.get_polydata_symmetry_plane_vector()
 
         # Def structures points et lignes
-        points_rapid_feedrate = vtk.vtkPoints()
-        points_work_feedrate = vtk.vtkPoints()
-        vertex_rapid_feedrate = vtk.vtkCellArray()
-        vertex_work_feedrate = vtk.vtkCellArray()
-        c_values_rapid_feedrate = []
-        c_values_work_feedrate = []
+        points_toolpath = vtk.vtkPoints()
+        vertex_toolpath = vtk.vtkCellArray()
+        c_values_toolpath = []
+        move_type_values = []
 
         # Outil courant
         current_tool = 0
 
         # Acteurs
-        actors = {"work": [], "rapid": []}
+        actors = []
         obj_vtk_functions = VtkFunctions()
 
-        def add_c_values_for_new_points(points_vtk, c_values_container, previous_c, current_c):
-            """Ajoute une valeur C pour chaque point cree entre deux instants."""
-            num_points = points_vtk.GetNumberOfPoints()
-            already_stored = len(c_values_container)
-            new_points_count = num_points - already_stored
-            if new_points_count <= 0:
+        current_polyline_points = []
+        current_polyline_c_values = []
+        current_move_group_type = None
+
+        def build_c_values_for_path(path_points_count, previous_c, current_c):
+            """Construit les valeurs C associees a une liste de points."""
+            if path_points_count <= 0:
+                return []
+            if path_points_count == 1:
+                return [float(current_c)]
+
+            c_step = (current_c - previous_c) / (path_points_count - 1)
+            return [float(previous_c + i * c_step) for i in range(path_points_count)]
+
+        def flush_current_polyline():
+            """Ecrit la polyligne courante dans les structures VTK."""
+            nonlocal current_polyline_points, current_polyline_c_values, current_move_group_type
+            if len(current_polyline_points) < 2 or current_move_group_type is None:
+                current_polyline_points = []
+                current_polyline_c_values = []
+                current_move_group_type = None
                 return
 
-            if new_points_count == 1:
-                c_values_container.append(float(current_c))
+            obj_tool_path_builder.create_polyline(points_toolpath, vertex_toolpath, current_polyline_points)
+            c_values_toolpath.extend(current_polyline_c_values)
+            move_type_values.append(current_move_group_type)
+            current_polyline_points = []
+            current_polyline_c_values = []
+            current_move_group_type = None
+
+        def append_path_to_current_polyline(path_points, path_c_values, move_type_value):
+            """Ajoute un segment a la polyligne courante ou force un flush si besoin."""
+            nonlocal current_polyline_points, current_polyline_c_values, current_move_group_type
+            if len(path_points) < 2:
                 return
 
-            c_step = (current_c - previous_c) / (new_points_count - 1)
-            for i in range(new_points_count):
-                c_values_container.append(float(previous_c + i * c_step))
+            if current_move_group_type != move_type_value:
+                flush_current_polyline()
+
+            if not current_polyline_points:
+                current_polyline_points = list(path_points)
+                current_polyline_c_values = list(path_c_values)
+                current_move_group_type = move_type_value
+                return
+
+            if current_polyline_points[-1] == path_points[0]:
+                current_polyline_points.extend(path_points[1:])
+                current_polyline_c_values.extend(path_c_values[1:])
+            else:
+                current_polyline_points.extend(path_points)
+                current_polyline_c_values.extend(path_c_values)
 
         def finalize_polydata_and_add_actors():
-            """Construit les polydata, applique transformations puis cree les acteurs."""
+            """Construit le polydata, applique transformations puis cree l'acteur."""
             nonlocal actors
-            poly_data_rapid_feedrate = vtk.vtkPolyData()
-            poly_data_work_feedrate = vtk.vtkPolyData()
-            poly_data_rapid_feedrate.SetPoints(points_rapid_feedrate)
-            poly_data_work_feedrate.SetPoints(points_work_feedrate)
-            poly_data_rapid_feedrate.SetLines(vertex_rapid_feedrate)
-            poly_data_work_feedrate.SetLines(vertex_work_feedrate)
+            flush_current_polyline()
+            if current_tool == 0 or vertex_toolpath.GetNumberOfCells() == 0:
+                return
 
-            poly_data_rapid_feedrate = obj_vtk_functions.add_c_angle_to_polydata(
-                poly_data_rapid_feedrate,
-                c_values_rapid_feedrate,
-            )
-            poly_data_work_feedrate = obj_vtk_functions.add_c_angle_to_polydata(
-                poly_data_work_feedrate,
-                c_values_work_feedrate,
-            )
+            poly_data_toolpath = vtk.vtkPolyData()
+            poly_data_toolpath.SetPoints(points_toolpath)
+            poly_data_toolpath.SetLines(vertex_toolpath)
 
-            poly_data_rapid_feedrate = obj_vtk_functions.apply_c_rotation_to_polydata(poly_data_rapid_feedrate)
-            poly_data_work_feedrate = obj_vtk_functions.apply_c_rotation_to_polydata(poly_data_work_feedrate)
+            poly_data_toolpath = obj_vtk_functions.add_c_angle_to_polydata(
+                poly_data_toolpath,
+                c_values_toolpath,
+            )
+            poly_data_toolpath = obj_vtk_functions.add_move_type_to_polydata(
+                poly_data_toolpath,
+                move_type_values,
+            )
+            poly_data_toolpath = obj_vtk_functions.apply_c_rotation_to_polydata(poly_data_toolpath)
 
             # Application symetrie polydata si necessaire
             if symmetry_plane_vector is not None:
-                poly_data_rapid_feedrate = obj_vtk_functions.apply_symmetry_to_polydata(
-                    poly_data_rapid_feedrate,
-                    symmetry_plane_vector["vector"])
-                poly_data_work_feedrate = obj_vtk_functions.apply_symmetry_to_polydata(
-                    poly_data_work_feedrate,
+                poly_data_toolpath = obj_vtk_functions.apply_symmetry_to_polydata(
+                    poly_data_toolpath,
                     symmetry_plane_vector["vector"])
 
             # Application decalage en Z si epaisseur piece renseignee
             if self.part_thickness != 0:
-                poly_data_rapid_feedrate = obj_vtk_functions.apply_z_offset_to_polydata(
-                    poly_data_rapid_feedrate,
-                    self.part_thickness)
-                poly_data_work_feedrate = obj_vtk_functions.apply_z_offset_to_polydata(
-                    poly_data_work_feedrate,
+                poly_data_toolpath = obj_vtk_functions.apply_z_offset_to_polydata(
+                    poly_data_toolpath,
                     self.part_thickness)
 
-            # Ajout des acteurs
-            actors = obj_vtk_functions.create_actors(
-                poly_data_rapid_feedrate,
-                poly_data_work_feedrate,
+            # Ajout de l'acteur
+            actors = obj_vtk_functions.create_actor(
+                poly_data_toolpath,
                 actors,
                 current_tool)
 
@@ -151,24 +177,26 @@ class ToolPathInterpreter:
                 current_tool = current_line.tool_number
 
                 # Def structures points et lignes
-                points_rapid_feedrate = vtk.vtkPoints()
-                points_work_feedrate = vtk.vtkPoints()
-                vertex_rapid_feedrate = vtk.vtkCellArray()
-                vertex_work_feedrate = vtk.vtkCellArray()
-                c_values_rapid_feedrate = []
-                c_values_work_feedrate = []
+                points_toolpath = vtk.vtkPoints()
+                vertex_toolpath = vtk.vtkCellArray()
+                c_values_toolpath = []
+                move_type_values = []
+                current_polyline_points = []
+                current_polyline_c_values = []
+                current_move_group_type = None
 
             # Si nouvel outil
             if current_line.tool_number != current_tool and current_line.tool_number != 0:
                 finalize_polydata_and_add_actors()
 
                 # Redef structures points et lignes
-                points_rapid_feedrate = vtk.vtkPoints()
-                points_work_feedrate = vtk.vtkPoints()
-                vertex_rapid_feedrate = vtk.vtkCellArray()
-                vertex_work_feedrate = vtk.vtkCellArray()
-                c_values_rapid_feedrate = []
-                c_values_work_feedrate = []
+                points_toolpath = vtk.vtkPoints()
+                vertex_toolpath = vtk.vtkCellArray()
+                c_values_toolpath = []
+                move_type_values = []
+                current_polyline_points = []
+                current_polyline_c_values = []
+                current_move_group_type = None
 
                 # Val outil courant
                 current_tool = current_line.tool_number
@@ -184,75 +212,43 @@ class ToolPathInterpreter:
 
                 # Si ligne en avance rapide
                 if current_line.move_type == MoveType.RAPID_MOVE:
-                    before_count = points_rapid_feedrate.GetNumberOfPoints()
-
-                    # Contructeur ligne
-                    obj_tool_path_builder.create_line(points_rapid_feedrate, vertex_rapid_feedrate, previous_point, current_point)
-                    if points_rapid_feedrate.GetNumberOfPoints() > before_count:
-                        previous_c = float(previous_point[3]) if len(previous_point) > 3 else 0.0
-                        add_c_values_for_new_points(
-                            points_rapid_feedrate,
-                            c_values_rapid_feedrate,
-                            previous_c,
-                            float(current_point[3]))
+                    path_points = obj_tool_path_builder.build_line_points(previous_point, current_point)
+                    previous_c = float(previous_point[3]) if len(previous_point) > 3 else 0.0
+                    path_c_values = build_c_values_for_path(len(path_points), previous_c, float(current_point[3]))
+                    append_path_to_current_polyline(path_points, path_c_values, 0)
 
                 # Si ligne en avance travail
                 elif current_line.move_type == MoveType.LINEAR_MOVE:
-                    before_count = points_work_feedrate.GetNumberOfPoints()
-
-                    # Contructeur ligne
-                    obj_tool_path_builder.create_line(points_work_feedrate, vertex_work_feedrate, previous_point, current_point)
-                    if points_work_feedrate.GetNumberOfPoints() > before_count:
-                        previous_c = float(previous_point[3]) if len(previous_point) > 3 else 0.0
-                        add_c_values_for_new_points(
-                            points_work_feedrate,
-                            c_values_work_feedrate,
-                            previous_c,
-                            float(current_point[3]))
+                    path_points = obj_tool_path_builder.build_line_points(previous_point, current_point)
+                    previous_c = float(previous_point[3]) if len(previous_point) > 3 else 0.0
+                    path_c_values = build_c_values_for_path(len(path_points), previous_c, float(current_point[3]))
+                    append_path_to_current_polyline(path_points, path_c_values, 1)
 
                 # Si cercle CW
                 elif current_line.move_type == MoveType.CIRCULAR_MOVE_CW:
-                    before_count = points_work_feedrate.GetNumberOfPoints()
-
-                    # Contructeur cercle
-                    obj_tool_path_builder.create_circle(
-                        points_work_feedrate,
-                        vertex_work_feedrate,
+                    path_points = obj_tool_path_builder.build_circle_points(
                         previous_point,
                         current_point,
                         current_line.radius,
                         resolution_cercle,
                         True,
                         current_line.work_plane)
-                    if points_work_feedrate.GetNumberOfPoints() > before_count:
-                        previous_c = float(previous_point[3]) if len(previous_point) > 3 else 0.0
-                        add_c_values_for_new_points(
-                            points_work_feedrate,
-                            c_values_work_feedrate,
-                            previous_c,
-                            float(current_point[3]))
+                    previous_c = float(previous_point[3]) if len(previous_point) > 3 else 0.0
+                    path_c_values = build_c_values_for_path(len(path_points), previous_c, float(current_point[3]))
+                    append_path_to_current_polyline(path_points, path_c_values, 1)
 
                 # Si cercle CCW
                 elif current_line.move_type == MoveType.CIRCULAR_MOVE_CCW:
-                    before_count = points_work_feedrate.GetNumberOfPoints()
-
-                    # Contructeur cercle
-                    obj_tool_path_builder.create_circle(
-                        points_work_feedrate,
-                        vertex_work_feedrate,
+                    path_points = obj_tool_path_builder.build_circle_points(
                         previous_point,
                         current_point,
                         current_line.radius,
                         resolution_cercle,
                         False,
                         current_line.work_plane)
-                    if points_work_feedrate.GetNumberOfPoints() > before_count:
-                        previous_c = float(previous_point[3]) if len(previous_point) > 3 else 0.0
-                        add_c_values_for_new_points(
-                            points_work_feedrate,
-                            c_values_work_feedrate,
-                            previous_c,
-                            float(current_point[3]))
+                    previous_c = float(previous_point[3]) if len(previous_point) > 3 else 0.0
+                    path_c_values = build_c_values_for_path(len(path_points), previous_c, float(current_point[3]))
+                    append_path_to_current_polyline(path_points, path_c_values, 1)
 
                 # Recup pt precedent
                 previous_point = current_point
@@ -312,6 +308,26 @@ class VtkFunctions:
         output_polydata.GetPointData().AddArray(c_array)
         return output_polydata
 
+    def add_move_type_to_polydata(self, polydata, move_type_values, array_name="MoveType"):
+        """Ajoute un tableau CellData contenant le type de mouvement de chaque segment."""
+        output_polydata = vtk.vtkPolyData()
+        output_polydata.DeepCopy(polydata)
+
+        num_cells = output_polydata.GetNumberOfCells()
+        if len(move_type_values) != num_cells:
+            raise ValueError("MoveTypeDataError: nombre de types de mouvements different du nombre de cellules")
+
+        move_type_array = vtk.vtkUnsignedCharArray()
+        move_type_array.SetName(array_name)
+        move_type_array.SetNumberOfComponents(1)
+        move_type_array.SetNumberOfTuples(num_cells)
+
+        for i, move_type_value in enumerate(move_type_values):
+            move_type_array.SetValue(i, int(move_type_value))
+
+        output_polydata.GetCellData().SetScalars(move_type_array)
+        return output_polydata
+
     def apply_c_rotation_to_polydata(self, polydata, array_name="C_angle_deg"):
         """Applique une rotation XY point par point selon le tag C stocke en degres."""
         output_polydata = vtk.vtkPolyData()
@@ -353,27 +369,16 @@ class VtkFunctions:
         output_polydata.DeepCopy(transform_filter.GetOutput())
         return output_polydata
 
-    def create_actors(self, datas_rapid_feedrate, datas_work_feedrate, list_actors, current_tool):
-        """Cette methode sert a creer les acteurs pour les trajectoires"""
+    def create_actor(self, toolpath_data, actors_list, current_tool):
+        """Cette methode sert a creer un acteur de trajectoire pour un outil."""
+        mapper_toolpath = vtk.vtkPolyDataMapper()
+        mapper_toolpath.SetInputData(toolpath_data)
+        mapper_toolpath.SetScalarModeToUseCellData()
+        mapper_toolpath.SetColorModeToMapScalars()
 
-        # Mapper
-        mapper_rapid_feedrate = vtk.vtkPolyDataMapper()
-        mapper_work_feedrate = vtk.vtkPolyDataMapper()
-        mapper_rapid_feedrate.SetInputData(datas_rapid_feedrate)
-        mapper_work_feedrate.SetInputData(datas_work_feedrate)
+        actor_toolpath = vtk.vtkActor()
+        actor_toolpath.SetMapper(mapper_toolpath)
+        actor_toolpath.tag = current_tool
 
-        # Actors
-        actor_rapid_feedrate = vtk.vtkActor()
-        actor_work_feedrate = vtk.vtkActor()
-        actor_rapid_feedrate.SetMapper(mapper_rapid_feedrate)
-        actor_work_feedrate.SetMapper(mapper_work_feedrate)
-
-        # Tag pour recup num outil
-        actor_rapid_feedrate.tag = current_tool
-        actor_work_feedrate.tag = current_tool
-
-        # Ajout dans structure 2 niveaux
-        list_actors["work"].append(actor_work_feedrate)  # work index 0
-        list_actors["rapid"].append(actor_rapid_feedrate)  # rapid index 1
-
-        return list_actors
+        actors_list.append(actor_toolpath)
+        return actors_list

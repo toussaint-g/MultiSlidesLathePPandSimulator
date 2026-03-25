@@ -1,10 +1,10 @@
 
 # -*- coding: utf-8 -*-
 
-from b_machines_config.machine_parameters import JsonDict, MachineParameters
+from p02_machines_config.machine_parameters import JsonDict, MachineParameters
 
 class IsoAnalyzerWriter:
-    """Classe qui permet d'écrire le rapport"""
+    """Classe qui permet d'ecrire le rapport"""
 
     def __init__(self, machine_config: JsonDict):
         self.digit_after_point_distance = 3
@@ -13,7 +13,7 @@ class IsoAnalyzerWriter:
             self.machine = MachineParameters.from_machine_config(machine_config, home_x_mode="machine")
             self.rapidfeedrate = self.machine.rapidfeedrate
         except KeyError:
-            raise ValueError("MachineConfigError: Clé 'rapidfeedrate' absente du fichier JSON")
+            raise ValueError("MachineConfigError: Cle 'rapidfeedrate' absente du fichier JSON")
 
 
     def format_time(self, minutes):
@@ -31,7 +31,7 @@ class IsoAnalyzerWriter:
             return f"{int(seconds)}s"
 
     def write_report(self, file_name, iso_name, list_datas):
-        """Cette méthode crée et écrit les données dans le rapport"""
+        """Cette methode cree et ecrit les donnees dans le rapport"""
         current_tool = None
         current_tool_offset = None
         time_sum = 0.0
@@ -46,24 +46,24 @@ class IsoAnalyzerWriter:
         with open(file_name, 'w') as file:
             file.write(f"Programme : {iso_name}\n")
             file.write(f"Nombre de lignes du programme : {len(list_datas)}\n")
-            file.write(f"Durée du programme : {self.format_time(program_time)}\n")
-            file.write(f"Durée d'usinage : {self.format_time(program_productive_time)}\n")
-            file.write(f"Durée improductive : {self.format_time(program_imporductive_time)}\n")
+            file.write(f"Duree du programme : {self.format_time(program_time)}\n")
+            file.write(f"Duree d'usinage : {self.format_time(program_productive_time)}\n")
+            file.write(f"Duree improductive : {self.format_time(program_imporductive_time)}\n")
             
             for entry in list_datas:
                 if entry.tool_number != current_tool:
                     if current_tool is not None and current_tool != 0:
                         file.write(
-                            f"\nOutil N°{int(current_tool)}\n"
+                            f"\nOutil N{int(current_tool)}\n"
                             f" Correcteur:{int(current_tool_offset)}\n"
-                            f" Durée d'utilisation : {self.format_time(time_sum)}\n"
-                            f" Durée d'usinage : {self.format_time(productive_time_sum)}\n"
-                            f" Durée improductive : {self.format_time(time_sum - productive_time_sum)}\n"
+                            f" Duree d'utilisation : {self.format_time(time_sum)}\n"
+                            f" Duree d'usinage : {self.format_time(productive_time_sum)}\n"
+                            f" Duree improductive : {self.format_time(time_sum - productive_time_sum)}\n"
                             f" Distance parcourue : {round(distance_sum, self.digit_after_point_distance)} mm\n"
-                            f" Distance parcourue dans la matière : {round(distance_in_material_sum, self.digit_after_point_distance)} mm\n"
+                            f" Distance parcourue dans la matiere : {round(distance_in_material_sum, self.digit_after_point_distance)} mm\n"
                         )
 
-                    # Remise des compteurs à 0
+                    # Remise des compteurs a 0
                     current_tool = entry.tool_number
                     current_tool_offset = entry.tool_offset
                     time_sum = 0.0
@@ -79,17 +79,17 @@ class IsoAnalyzerWriter:
             # Dernier outil
             if current_tool is not None and current_tool != 0:
                 file.write(
-                    f"\nOutil N°{int(current_tool)}\n"
+                    f"\nOutil N{int(current_tool)}\n"
                     f" Correcteur:{int(current_tool_offset)}\n"
-                    f" Durée d'utilisation : {self.format_time(time_sum)}\n"
-                    f" Durée d'usinage : {self.format_time(productive_time_sum)}\n"
-                    f" Durée improductive : {self.format_time(time_sum - productive_time_sum)}\n"
+                    f" Duree d'utilisation : {self.format_time(time_sum)}\n"
+                    f" Duree d'usinage : {self.format_time(productive_time_sum)}\n"
+                    f" Duree improductive : {self.format_time(time_sum - productive_time_sum)}\n"
                     f" Distance parcourue : {round(distance_sum, self.digit_after_point_distance)} mm\n"
-                    f" Distance parcourue dans la matière : {round(distance_in_material_sum, self.digit_after_point_distance)} mm\n"
+                    f" Distance parcourue dans la matiere : {round(distance_in_material_sum, self.digit_after_point_distance)} mm\n"
                 )
 
     def write_debug_file(self, file_name, iso_name, list_datas):
-        """Cette méthode crée et écrit un fichier de debug pour analyse"""
+        """Cette methode cree et ecrit un fichier de debug pour analyse"""
 
         current_tool = None
         current_tool_offset = None
@@ -105,26 +105,26 @@ class IsoAnalyzerWriter:
         with open(file_name, 'w') as file:
             file.write(f"Programme : {iso_name}\n")
             file.write(f"Nombre de lignes du programme : {len(list_datas)}\n")
-            file.write(f"Durée du programme : {self.format_time(program_time)}\n")
-            file.write(f"Durée d'usinage : {self.format_time(program_productive_time)}\n")
-            file.write(f"Durée improductive : {self.format_time(program_imporductive_time)}\n")
+            file.write(f"Duree du programme : {self.format_time(program_time)}\n")
+            file.write(f"Duree d'usinage : {self.format_time(program_productive_time)}\n")
+            file.write(f"Duree improductive : {self.format_time(program_imporductive_time)}\n")
             
             for entry in list_datas:
 
-                # Données opération
+                # Donnees operation
                 if entry.tool_number != current_tool:
                     if current_tool is not None and current_tool != 0:
                         file.write(
                             f"\n"
                             f"{void.ljust(52)} ==> "
                             f"Distance: {str(round(distance_sum, self.digit_after_point_distance)).ljust(10)}mm   "
-                            f"Distance dans la matière: {str(round(distance_in_material_sum, self.digit_after_point_distance)).ljust(10)}mm   "
-                            f"Durée: {self.format_time(time_sum).ljust(10)}"
-                            f"Durée d'usinage: {self.format_time(productive_time_sum).ljust(10)}"
-                            f"Durée imporductif: {self.format_time(time_sum - productive_time_sum)}\n\n"
+                            f"Distance dans la matiere: {str(round(distance_in_material_sum, self.digit_after_point_distance)).ljust(10)}mm   "
+                            f"Duree: {self.format_time(time_sum).ljust(10)}"
+                            f"Duree d'usinage: {self.format_time(productive_time_sum).ljust(10)}"
+                            f"Duree imporductif: {self.format_time(time_sum - productive_time_sum)}\n\n"
                         )
                     
-                    # Remise des compteurs à 0
+                    # Remise des compteurs a 0
                     current_tool = entry.tool_number
                     current_tool_offset = entry.tool_offset
                     time_sum = 0.0
@@ -137,7 +137,7 @@ class IsoAnalyzerWriter:
                 distance_sum += entry.distance
                 distance_in_material_sum += entry.distance_in_material
 
-                # Données ligne
+                # Donnees ligne
                 if entry.move_type == 0 or entry.move_type == 1 :
                     radius = 0.0
                 else:
@@ -161,18 +161,17 @@ class IsoAnalyzerWriter:
                         f"Position C: {str(round(entry.endpoint_c, self.digit_after_point_distance)).ljust(10)}"
                         f"Rayon: {str(round(radius, self.digit_after_point_distance)).ljust(10)}"
                         f"Distance: {str(round(entry.distance, self.digit_after_point_distance)).ljust(10)}"
-                        f"Distance dans la matière: {str(round(entry.distance_in_material, self.digit_after_point_distance)).ljust(10)}"
+                        f"Distance dans la matiere: {str(round(entry.distance_in_material, self.digit_after_point_distance)).ljust(10)}"
                         f"Avance: {str(feedrate).ljust(10)}"
-                        f"Durée: {str(round(entry.time * 60, self.digit_after_point_time))}s \n"
+                        f"Duree: {str(round(entry.time * 60, self.digit_after_point_time))}s \n"
                     )
 
-            # Données outils dernier outil
+            # Donnees outils dernier outil
             if current_tool is not None and current_tool != 0:
                 file.write(
                         f"\n"
                         f"{void.ljust(52)} ==> "
                         f"Distance: {str(round(distance_sum, self.digit_after_point_distance)).ljust(10)}"
-                        f"Distance dans la matière: {str(round(distance_in_material_sum, self.digit_after_point_distance)).ljust(10)}"
-                        f"Durée: {self.format_time(time_sum)}\n\n"
+                        f"Distance dans la matiere: {str(round(distance_in_material_sum, self.digit_after_point_distance)).ljust(10)}"
+                        f"Duree: {self.format_time(time_sum)}\n\n"
                     )
-

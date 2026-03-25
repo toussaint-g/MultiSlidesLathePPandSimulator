@@ -5,10 +5,10 @@ from typing import Callable, Optional
 from functools import partial
 import re
 from enum import Enum
-from b_machines_config.machine_parameters import JsonDict, MachineParameters
-from d_iso_generator.parameters_enums import FeedrateUnit, MotionMode, SpindleDirection, SpindleUnit, ToolType
-from d_iso_generator.geometric_calculations import build_point_from_plane as geometry_build_point_from_plane, ccw_tangent_vector as geometry_ccw_tangent_vector, cw_tangent_vector as geometry_cw_tangent_vector, line_circle_intersections_2d as geometry_line_circle_intersections_2d, project_point_to_plane as geometry_project_point_to_plane
-from d_iso_generator.machine_state import EmissionState, WriterState
+from p02_machines_config.machine_parameters import JsonDict, MachineParameters
+from p05_iso_generator.parameters_enums import FeedrateUnit, MotionMode, SpindleDirection, SpindleUnit, ToolType
+from p05_iso_generator.geometric_calculations import build_point_from_plane as geometry_build_point_from_plane, ccw_tangent_vector as geometry_ccw_tangent_vector, cw_tangent_vector as geometry_cw_tangent_vector, line_circle_intersections_2d as geometry_line_circle_intersections_2d, project_point_to_plane as geometry_project_point_to_plane
+from p05_iso_generator.machine_state import EmissionState, WriterState
 
 
 # -----------------------------
@@ -130,7 +130,7 @@ class IsoWriter:
 
 
 
-    # TODO: Pas assez de vérif, à reprendre
+    # TODO: Pas assez de verif, a reprendre
 
     def tool_change(self, tool_number: int, tool_comment: str) -> None:
         """Emet les lignes ISO pour un changement d'outil, en fonction du type d'outil et de l'etat de la broche."""
@@ -146,7 +146,7 @@ class IsoWriter:
 
 
     # TODO: Gestion surface constante (G96/G97) pas prise en compte pour l'instant, a voir si on en a besoin.
-    # TODO: Verifier le sens de rotation des broches de tournage et peut-être mettre un paramètre d'inversion dans machines_config.
+    # TODO: Verifier le sens de rotation des broches de tournage et peut-etre mettre un parametre d'inversion dans machines_config.
     def spindle_start(self, tool_number: int, spindle_speed: float, spindle_unit: SpindleUnit, spindle_direction: SpindleDirection) -> None:
         """Demarre la broche avec la vitesse et la direction specifiees."""
         if self.emission_state.last_spindle_speed != spindle_speed or self.emission_state.last_spindle_direction != spindle_direction or self.emission_state.last_tool_number != tool_number:
@@ -155,7 +155,7 @@ class IsoWriter:
             self.emission_state.last_spindle_direction = spindle_direction
             self.emission_state.last_tool_number = tool_number
             
-    # TODO: Voir pour gérer les messages d'erreur dans ce style partout dans le code. 
+    # TODO: Voir pour gerer les messages d'erreur dans ce style partout dans le code. 
     def spindle_stop(self, tool_number: int) -> None:
         """Arrete la broche."""
         # tool_config = self._get_tool_config(tool_number)
@@ -376,7 +376,7 @@ def h_op_name(apt_keyword: str, argument_text: str, state: WriterState, iso_writ
 
 
 
-# TODO: prendre dans TDATA MILL/TURN, puis LOAD pour le N° d'outil, puis spindle pour la vitesse de broche. Après seulement déclencher l'écriture des lignes ISO.
+# TODO: prendre dans TDATA MILL/TURN, puis LOAD pour le N d'outil, puis spindle pour la vitesse de broche. Apres seulement declencher l'ecriture des lignes ISO.
 
 def h_tprint(apt_keyword: str, argument_text: str, state: WriterState, iso_writer: IsoWriter) -> None:
     """Gere la commande TPRINT en la commentant dans l'ISO et en extrayant le commentaire d'outil pour les changements d'outil."""
@@ -410,7 +410,7 @@ def h_loadtl(apt_keyword: str, argument_text: str, state: WriterState, iso_write
     # Exemple fraisage : LOADTL/10,ADJUST,1,SPINDL,15915.494300,MILL
     # Exemple tournage : LOADTL/1,ADJUST,9,TURN
     tool_tokens = csv_tokens(argument_text)
-    tool_number = int(tool_tokens[0]) # TODO: Voir si c'est bien le numéro d'outil.
+    tool_number = int(tool_tokens[0]) # TODO: Voir si c'est bien le numero d'outil.
     previous_tool_number = state.tool_number
     # previous_tool_type = state.tool_type
 
@@ -432,7 +432,7 @@ def h_loadtl(apt_keyword: str, argument_text: str, state: WriterState, iso_write
 
 
 
-    # TODO: Pas assez de vérif, à reprendre
+    # TODO: Pas assez de verif, a reprendre
 
     iso_writer.tool_change(state.tool_number, state.tool_comment)
 

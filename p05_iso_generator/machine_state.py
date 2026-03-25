@@ -3,7 +3,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
-from d_iso_generator.parameters_enums import FeedrateUnit, MotionMode, SpindleDirection, SpindleUnit, ToolType
+from p05_iso_generator.parameters_enums import FeedrateUnit, MotionMode, SpindleDirection, SpindleUnit, ToolType
 
 
 @dataclass
