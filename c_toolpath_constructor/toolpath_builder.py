@@ -33,7 +33,7 @@ class ToolPathBuilder:
         v = np.cross(n, u)
         return u, v, n
 
-    def create_line(self, points_vtk, lines_vtk, start_point, end_point):
+    def create_line(self, points_vtk: vtk.vtkPoints, lines_vtk: vtk.vtkCellArray, start_point, end_point):
         """Cette methode permet de creer les donnees pour une ligne"""
 
         # Creation points VTK
@@ -48,7 +48,7 @@ class ToolPathBuilder:
         # Ajout de la courbe dans le vtkCellArray
         lines_vtk.InsertNextCell(line_toolpath)
 
-    def create_circle(self, points_vtk, lines_vtk, start_point, end_point, radius, resolution_cercle, direction_cw, work_plane):
+    def create_circle(self, points_vtk: vtk.vtkPoints, lines_vtk: vtk.vtkCellArray, start_point, end_point, radius, resolution_cercle, direction_cw, work_plane):
         """Cette methode permet de creer les donnees pour un cercle dans un plan donne."""
 
         # Le viewer trajectoire travaille en XYZ : ignorer une eventuelle 4e composante (axe C).
