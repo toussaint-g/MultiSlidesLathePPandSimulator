@@ -14,23 +14,20 @@ class ToolPathInterpreter:
     """Classe qui permet d'interpeter les datas"""
 
     def __init__(self, machine_config: JsonDict, channel_name: str, part_thickness):
-        try:
-            # Initialisation des variables
-            self.machine = MachineParameters.from_config(machine_config, channel_name, home_x_mode="part")
-            self.part_thickness = part_thickness
-            # Data machine
-            self.x_diameter = self.machine.x_diameter
-            self.home_tool_x = self.machine.home_tool_x
-            self.home_tool_y = self.machine.home_tool_y
-            self.home_tool_z = self.machine.home_tool_z
-            self.ipartvector = self.machine.ipartvector
-            self.jpartvector = self.machine.jpartvector
-            self.kpartvector = self.machine.kpartvector
-            self.ipathvector = self.machine.ipathvector
-            self.jpathvector = self.machine.jpathvector
-            self.kpathvector = self.machine.kpathvector
-        except KeyError:
-            raise ValueError("MachineConfigError: une cle est absente dans le fichier JSON")
+        # Initialisation des variables
+        self.machine = MachineParameters.from_config(machine_config, channel_name, home_x_mode="part")
+        self.part_thickness = part_thickness
+        # Data machine
+        self.x_diameter = self.machine.x_diameter
+        self.home_tool_x = self.machine.home_tool_x
+        self.home_tool_y = self.machine.home_tool_y
+        self.home_tool_z = self.machine.home_tool_z
+        self.ipartvector = self.machine.ipartvector
+        self.jpartvector = self.machine.jpartvector
+        self.kpartvector = self.machine.kpartvector
+        self.ipathvector = self.machine.ipathvector
+        self.jpathvector = self.machine.jpathvector
+        self.kpathvector = self.machine.kpathvector
 
     @staticmethod
     def _extract_axis_sign(vector):
@@ -77,15 +74,29 @@ class ToolPathInterpreter:
         current_polyline_c_values = []
         current_move_group_type = None
 
-        def build_c_values_for_path(path_points_count, previous_c, current_c):
-            """Construit les valeurs C associees a une liste de points."""
-            if path_points_count <= 0:
-                return []
-            if path_points_count == 1:
-                return [float(current_c)]
+        def build_rotated_path(path_points, previous_c, current_c):
+            """Construit la trajectoire en forcant d'abord la rotation du point courant si C change."""
+            if len(path_points) < 2:
+                return [], []
 
-            c_step = (current_c - previous_c) / (path_points_count - 1)
-            return [float(previous_c + i * c_step) for i in range(path_points_count)]
+            if float(current_c) == float(previous_c):
+                return list(path_points), [float(current_c)] * len(path_points)
+
+            rotated_path_points = [path_points[0], path_points[0], *path_points[1:]]
+            rotated_path_c_values = [float(previous_c), float(current_c), *([float(current_c)] * (len(path_points) - 1))]
+            return rotated_path_points, rotated_path_c_values
+
+        def build_c_axis_rotation_path(previous_point, current_point, previous_c, current_c):
+            """Construit une trajectoire pure de rotation C sur le point courant."""
+            if float(previous_c) == float(current_c):
+                return [], []
+
+            pivot_point = (
+                float(previous_point[0]),
+                float(previous_point[1]),
+                float(previous_point[2]),
+            )
+            return [pivot_point, pivot_point], [float(previous_c), float(current_c)]
 
         def flush_current_polyline():
             """Ecrit la polyligne courante dans les structures VTK."""
@@ -140,6 +151,7 @@ class ToolPathInterpreter:
                 poly_data_toolpath,
                 c_values_toolpath,
             )
+            poly_data_toolpath = obj_vtk_functions.add_original_coordinates_to_polydata(poly_data_toolpath)
             poly_data_toolpath = obj_vtk_functions.add_move_type_to_polydata(
                 poly_data_toolpath,
                 move_type_values,
@@ -204,53 +216,59 @@ class ToolPathInterpreter:
                 # Initialisation du point hometool
                 previous_point = [self.home_tool_x, self.home_tool_y, self.home_tool_z]
 
+            if current_line.tool_number != 0:
+                current_point = [current_line.endpoint_x, current_line.endpoint_y, current_line.endpoint_z, current_line.endpoint_c]
+                previous_c = float(previous_point[3]) if len(previous_point) > 3 else 0.0
+                current_c = float(current_point[3])
+
+                if current_c != previous_c and current_line.distance == 0.0 and current_line.distance_in_material == 0.0:
+                    path_points, path_c_values = build_c_axis_rotation_path(previous_point, current_point, previous_c, current_c)
+                    if current_line.move_type == MoveType.LINEAR_MOVE:
+                        append_path_to_current_polyline(path_points, path_c_values, 1)
+                    else:
+                        append_path_to_current_polyline(path_points, path_c_values, 0)
+
             # Si distance parcourue
             if current_line.distance != 0.0 or current_line.distance_in_material != 0.0 and current_line.tool_number != 0:
 
-                # Point courant
-                current_point = [current_line.endpoint_x, current_line.endpoint_y, current_line.endpoint_z, current_line.endpoint_c]
-
                 # Si ligne en avance rapide
                 if current_line.move_type == MoveType.RAPID_MOVE:
-                    path_points = obj_tool_path_builder.build_line_points(previous_point, current_point)
-                    previous_c = float(previous_point[3]) if len(previous_point) > 3 else 0.0
-                    path_c_values = build_c_values_for_path(len(path_points), previous_c, float(current_point[3]))
+                    base_path_points = obj_tool_path_builder.build_line_points(previous_point, current_point)
+                    path_points, path_c_values = build_rotated_path(base_path_points, previous_c, current_c)
                     append_path_to_current_polyline(path_points, path_c_values, 0)
 
                 # Si ligne en avance travail
                 elif current_line.move_type == MoveType.LINEAR_MOVE:
-                    path_points = obj_tool_path_builder.build_line_points(previous_point, current_point)
-                    previous_c = float(previous_point[3]) if len(previous_point) > 3 else 0.0
-                    path_c_values = build_c_values_for_path(len(path_points), previous_c, float(current_point[3]))
+                    base_path_points = obj_tool_path_builder.build_line_points(previous_point, current_point)
+                    path_points, path_c_values = build_rotated_path(base_path_points, previous_c, current_c)
                     append_path_to_current_polyline(path_points, path_c_values, 1)
 
                 # Si cercle CW
                 elif current_line.move_type == MoveType.CIRCULAR_MOVE_CW:
-                    path_points = obj_tool_path_builder.build_circle_points(
+                    base_path_points = obj_tool_path_builder.build_circle_points(
                         previous_point,
                         current_point,
                         current_line.radius,
                         resolution_cercle,
                         True,
                         current_line.work_plane)
-                    previous_c = float(previous_point[3]) if len(previous_point) > 3 else 0.0
-                    path_c_values = build_c_values_for_path(len(path_points), previous_c, float(current_point[3]))
+                    path_points, path_c_values = build_rotated_path(base_path_points, previous_c, current_c)
                     append_path_to_current_polyline(path_points, path_c_values, 1)
 
                 # Si cercle CCW
                 elif current_line.move_type == MoveType.CIRCULAR_MOVE_CCW:
-                    path_points = obj_tool_path_builder.build_circle_points(
+                    base_path_points = obj_tool_path_builder.build_circle_points(
                         previous_point,
                         current_point,
                         current_line.radius,
                         resolution_cercle,
                         False,
                         current_line.work_plane)
-                    previous_c = float(previous_point[3]) if len(previous_point) > 3 else 0.0
-                    path_c_values = build_c_values_for_path(len(path_points), previous_c, float(current_point[3]))
+                    path_points, path_c_values = build_rotated_path(base_path_points, previous_c, current_c)
                     append_path_to_current_polyline(path_points, path_c_values, 1)
 
-                # Recup pt precedent
+            if current_line.tool_number != 0:
+                # Recup pt precedent, y compris pour un mouvement C pur sans distance XYZ
                 previous_point = current_point
 
         finalize_polydata_and_add_actors()
@@ -306,6 +324,36 @@ class VtkFunctions:
             c_array.SetValue(i, float(c_value))
 
         output_polydata.GetPointData().AddArray(c_array)
+        return output_polydata
+
+    def add_original_coordinates_to_polydata(self, polydata):
+        """Ajoute les coordonnees d'origine avant transformation dans le PointData."""
+        output_polydata = vtk.vtkPolyData()
+        output_polydata.DeepCopy(polydata)
+
+        num_points = output_polydata.GetNumberOfPoints()
+        original_x_array = vtk.vtkDoubleArray()
+        original_y_array = vtk.vtkDoubleArray()
+        original_z_array = vtk.vtkDoubleArray()
+        original_x_array.SetName("OriginalX")
+        original_y_array.SetName("OriginalY")
+        original_z_array.SetName("OriginalZ")
+        original_x_array.SetNumberOfComponents(1)
+        original_y_array.SetNumberOfComponents(1)
+        original_z_array.SetNumberOfComponents(1)
+        original_x_array.SetNumberOfTuples(num_points)
+        original_y_array.SetNumberOfTuples(num_points)
+        original_z_array.SetNumberOfTuples(num_points)
+
+        for i in range(num_points):
+            point_x, point_y, point_z = output_polydata.GetPoint(i)
+            original_x_array.SetValue(i, float(point_x))
+            original_y_array.SetValue(i, float(point_y))
+            original_z_array.SetValue(i, float(point_z))
+
+        output_polydata.GetPointData().AddArray(original_x_array)
+        output_polydata.GetPointData().AddArray(original_y_array)
+        output_polydata.GetPointData().AddArray(original_z_array)
         return output_polydata
 
     def add_move_type_to_polydata(self, polydata, move_type_values, array_name="MoveType"):

@@ -55,13 +55,7 @@ class IsoWriter:
         # out contient le programme ISO final, ligne par ligne.
         self.out: list[str] = []
         self.emission_state = EmissionState()
-
-        try:
-            self.machine = MachineParameters.from_config(machine_config, channel_name, home_x_mode="machine")
-        except KeyError:
-            raise ValueError("MachineConfigError: une cle est absente dans le fichier JSON")
-        except ValueError:
-            raise ValueError("MachineConfigError: code plan de travail invalide dans le fichier JSON")
+        self.machine = MachineParameters.from_config(machine_config, channel_name, home_x_mode="machine")
 
 
     def _get_tool_config(self, tool_number: int):

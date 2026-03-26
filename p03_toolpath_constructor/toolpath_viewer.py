@@ -3,6 +3,7 @@
 
 # Librairie standard
 #from operator import index
+from pathlib import Path
 import vtk
 from vtkmodules.vtkCommonColor import vtkNamedColors
 
@@ -17,26 +18,23 @@ class ToolPathViewer:
     """Cette classe permet la lecture et la creation d'un viewer de ficher 3D"""
 
     def __init__(self, machine_config: JsonDict, channel_name: str, part_thickness):
-        try:
-            self.machine_config = machine_config
-            self.channel_name = channel_name
-            self.part_thickness = part_thickness
-            toolpath_parameters = ToolPathParameters.from_config(ToolPathConfigLoader.data)
-            self.viewer_background_color = toolpath_parameters.viewer_background_color
-            self.viewer_text_color = toolpath_parameters.viewer_text_color
-            self.viewer_text_size = toolpath_parameters.viewer_text_size
-            self.viewer_object_color = toolpath_parameters.viewer_object_color
-            self.viewer_origin_color = toolpath_parameters.viewer_origin_color
-            self.viewer_origin_diameter = toolpath_parameters.viewer_origin_diameter
-            self.viewer_compass_size = toolpath_parameters.viewer_compass_size
-            self.tool_path_width = toolpath_parameters.tool_path_width
-            self.tool_path_rapid_move_color = toolpath_parameters.tool_path_rapid_move_color
-            self.tool_path_work_move_color = toolpath_parameters.tool_path_work_move_color
-            self.tool_path_cursor_point_color = toolpath_parameters.tool_path_cursor_point_color
-            self.tool_path_cursor_point_size = toolpath_parameters.tool_path_cursor_point_size
-            self.tool_path_circle_resolution = toolpath_parameters.tool_path_circle_resolution
-        except ValueError:
-            raise ValueError("ToolPathConfigLoaderError: une cle est absente dans le fichier JSON")
+        self.machine_config = machine_config
+        self.channel_name = channel_name
+        self.part_thickness = part_thickness
+        toolpath_parameters = ToolPathParameters.from_config(ToolPathConfigLoader.data)
+        self.viewer_background_color = toolpath_parameters.viewer_background_color
+        self.viewer_text_color = toolpath_parameters.viewer_text_color
+        self.viewer_text_size = toolpath_parameters.viewer_text_size
+        self.viewer_object_color = toolpath_parameters.viewer_object_color
+        self.viewer_origin_color = toolpath_parameters.viewer_origin_color
+        self.viewer_origin_diameter = toolpath_parameters.viewer_origin_diameter
+        self.viewer_compass_size = toolpath_parameters.viewer_compass_size
+        self.tool_path_width = toolpath_parameters.tool_path_width
+        self.tool_path_rapid_move_color = toolpath_parameters.tool_path_rapid_move_color
+        self.tool_path_work_move_color = toolpath_parameters.tool_path_work_move_color
+        self.tool_path_cursor_point_color = toolpath_parameters.tool_path_cursor_point_color
+        self.tool_path_cursor_point_size = toolpath_parameters.tool_path_cursor_point_size
+        self.tool_path_circle_resolution = toolpath_parameters.tool_path_circle_resolution
 
 
     def open_viewer(self, path_file, list_datas):
@@ -47,11 +45,13 @@ class ToolPathViewer:
         # Acteur pour stl
         actor_stl = vtk.vtkActor()
 
+        stl_file_path = Path(path_file) if path_file not in ("", None) else None
+
         # Controle de selection de fichier STL
-        if path_file != "":
+        if stl_file_path is not None and stl_file_path.is_file():
             # Lire le fichier STL
             reader = vtk.vtkSTLReader()
-            reader.SetFileName(path_file)
+            reader.SetFileName(str(stl_file_path))
             # Acteur pour stl
             mapper_stl = vtk.vtkPolyDataMapper()
             mapper_stl.SetInputConnection(reader.GetOutputPort())
@@ -142,14 +142,30 @@ class ToolPathViewer:
         renderer_toolpath.AddActor(actor_cursor)
 
         toolpath_points = []
+        toolpath_c_values = []
+        toolpath_original_points = []
         for actor_toolpath in actors_list:
             current_tool_points = []
+            current_tool_c_values = []
+            current_tool_original_points = []
             polydata = actor_toolpath.GetMapper().GetInput()
             vtk_points = polydata.GetPoints() if polydata is not None else None
+            c_array = polydata.GetPointData().GetArray("C_angle_deg") if polydata is not None else None
+            original_x_array = polydata.GetPointData().GetArray("OriginalX") if polydata is not None else None
+            original_y_array = polydata.GetPointData().GetArray("OriginalY") if polydata is not None else None
+            original_z_array = polydata.GetPointData().GetArray("OriginalZ") if polydata is not None else None
             if vtk_points is not None:
                 for point_index in range(vtk_points.GetNumberOfPoints()):
                     current_tool_points.append(vtk_points.GetPoint(point_index))
+                    current_tool_c_values.append(c_array.GetValue(point_index) if c_array is not None else 0.0)
+                    current_tool_original_points.append((
+                        original_x_array.GetValue(point_index) if original_x_array is not None else 0.0,
+                        original_y_array.GetValue(point_index) if original_y_array is not None else 0.0,
+                        original_z_array.GetValue(point_index) if original_z_array is not None else 0.0,
+                    ))
             toolpath_points.append(current_tool_points)
+            toolpath_c_values.append(current_tool_c_values)
+            toolpath_original_points.append(current_tool_original_points)
 
         # Layer par dessus la piece
         renderer_toolpath.SetLayer(1)
@@ -189,8 +205,11 @@ class ToolPathViewer:
                 return
 
             current_point = etat_visu["current_point_index"] + 1
+            point_x, point_y, point_z = toolpath_original_points[current_actor_index][etat_visu["current_point_index"]]
+            point_c = toolpath_c_values[current_actor_index][etat_visu["current_point_index"]]
             text.SetInput(
-                f"{text_rendu} T{actors_list[current_actor_index].tag} point {current_point}/{points_count}"
+                f"{text_rendu} T{actors_list[current_actor_index].tag} point {current_point}/{points_count}\n"
+                f"X {point_x:.3f}  Y {point_y:.3f}  Z {point_z:.3f}  C {point_c:.3f}"
             )
 
         def update_cursor_actor():

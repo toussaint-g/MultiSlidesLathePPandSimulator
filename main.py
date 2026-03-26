@@ -193,6 +193,12 @@ def viewer_launch(path_gcode_file, stl_path_file, machine_name, channel_name, pa
     obj_toolpathviewer.open_viewer(stl_path_file, list_datas)
 
 
+def get_optional_path_from_label(label):
+    """Retourne un Path si le label contient un chemin, sinon une chaine vide."""
+    label_text = label.cget("text").strip()
+    return Path(label_text) if label_text else ""
+
+
 def update_channel_combo(selected_machine, channel_combo, selected_channel):
     """ Met a jour la liste des canaux disponibles en fonction de la machine selectionnee """
     machine_name = selected_machine.get()
@@ -465,7 +471,7 @@ def main():
     tb.Label(main_frame, text="Visualiser les trajectoires :", font=("Segoe UI", 16)).grid(column=2, row=18, sticky="w", padx=5, pady=5)
     visualize_button_for_analyzer = tb.Button(main_frame, text="Start", bootstyle="success", command=lambda: viewer_launch(
         Path(label_iso_file_for_analyzer.cget("text")), 
-        Path(label_stl.cget("text")),
+        get_optional_path_from_label(label_stl),
         selected_machine_for_analyzer.get(), 
         selected_channel_for_analyzer.get(),
         part_thickness_var.get()))
@@ -481,5 +487,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
