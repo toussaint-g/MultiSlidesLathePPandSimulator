@@ -58,28 +58,6 @@ class IsoWriter:
         self.machine = MachineParameters.from_config(machine_config, channel_name, home_x_mode="machine")
 
 
-    def _get_tool_config(self, tool_number: int):
-        """Recupere la configuration de l'outil pour un numero d'outil donne."""
-        tool_number_str = str(tool_number)
-        for tool_config in self.machine.channel_tools:
-            if tool_config.get("toolname") == tool_number_str:
-                return tool_config
-        return None
-
-    def _get_spindle_start_for_tool(self, tool_number: int, spindle_direction: SpindleDirection | None) -> str:
-        """Recupere le code de demarrage de la broche pour un outil donne et une direction de rotation specifiee."""
-        tool_config = self._get_tool_config(tool_number)
-        if tool_config is None:
-            raise ValueError(f"MachineConfigError: outil {tool_number} introuvable dans le canal {self.machine.channel_name}")
-        if spindle_direction == SpindleDirection.CLW:
-            return tool_config.get("spindleclwstart")
-        elif spindle_direction == SpindleDirection.CCLW:
-            return tool_config.get("spindlecclwstart")
-        elif spindle_direction is None:
-            return tool_config.get("spindleclwstop")
-        
-
-
     def emit(self, iso_line: str) -> None:
         """Ajoute une ligne ISO a la sortie."""
         self.out.append(iso_line)
@@ -140,11 +118,10 @@ class IsoWriter:
 
 
     # TODO: Gestion surface constante (G96/G97) pas prise en compte pour l'instant, a voir si on en a besoin.
-    # TODO: Verifier le sens de rotation des broches de tournage et peut-etre mettre un parametre d'inversion dans machines_config.
     def spindle_start(self, tool_number: int, spindle_speed: float, spindle_unit: SpindleUnit, spindle_direction: SpindleDirection) -> None:
         """Demarre la broche avec la vitesse et la direction specifiees."""
         if self.emission_state.last_spindle_speed != spindle_speed or self.emission_state.last_spindle_direction != spindle_direction or self.emission_state.last_tool_number != tool_number:
-            self.emit(f"{self._get_spindle_start_for_tool(tool_number, spindle_direction)} {self.machine.spindle_speed_prefix}{format_float_to_iso(spindle_speed)}")
+            self.emit(f"{self.machine.get_spindle_code_for_tool(tool_number, spindle_direction)} {self.machine.spindle_speed_prefix}{format_float_to_iso(spindle_speed)}")
             self.emission_state.last_spindle_speed = spindle_speed
             self.emission_state.last_spindle_direction = spindle_direction
             self.emission_state.last_tool_number = tool_number
@@ -152,10 +129,7 @@ class IsoWriter:
     # TODO: Voir pour gerer les messages d'erreur dans ce style partout dans le code. 
     def spindle_stop(self, tool_number: int) -> None:
         """Arrete la broche."""
-        # tool_config = self._get_tool_config(tool_number)
-        # if tool_config is None:
-        #     raise ValueError(f"MachineConfigError: outil {tool_number} introuvable dans le canal {self.machine.channel_name}")
-        self.emit(f"{self._get_spindle_start_for_tool(tool_number)}")
+        self.emit(self.machine.get_spindle_code_for_tool(tool_number))
 
 
 

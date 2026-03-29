@@ -30,6 +30,12 @@ class IsoAnalyzerWriter:
         else:
             return f"{int(seconds)}s"
 
+    def format_work_plane(self, work_plane):
+        """Retourne un libelle de plan de travail, y compris si aucun plan n'est defini."""
+        if work_plane is None:
+            return "NONE"
+        return work_plane.name
+
     def write_report(self, file_name, iso_name, list_datas):
         """Cette methode cree et ecrit les donnees dans le rapport"""
         current_tool = None
@@ -154,7 +160,7 @@ class IsoAnalyzerWriter:
                         f"Outil: {str(entry.tool_number).ljust(10)}"
                         f"Correcteur: {str(entry.tool_offset).ljust(10)}"
                         f"Mouvement: {entry.move_type.name.ljust(20)}"
-                        f"Plan de travail: {entry.work_plane.name.ljust(10)}"
+                        f"Plan de travail: {self.format_work_plane(entry.work_plane).ljust(10)}"
                         f"Position X: {str(round(entry.endpoint_x, self.digit_after_point_distance)).ljust(10)}"
                         f"Position Y: {str(round(entry.endpoint_y, self.digit_after_point_distance)).ljust(10)}"
                         f"Position Z: {str(round(entry.endpoint_z, self.digit_after_point_distance)).ljust(10)}"

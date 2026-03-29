@@ -44,7 +44,6 @@ class IsoInterpreter:
             self.xz_work_plane_code = self.machine.xz_work_plane_code
             self.yz_work_plane_code = self.machine.yz_work_plane_code
             self.work_plane_by_code = _build_work_plane_map(self.xy_work_plane_code,self.xz_work_plane_code,self.yz_work_plane_code)
-            self.default_work_plane = self.machine.default_work_plane
             self.home_tool_x = self.machine.home_tool_x
             self.home_tool_y = self.machine.home_tool_y
             self.home_tool_z = self.machine.home_tool_z
@@ -146,7 +145,7 @@ class IsoInterpreter:
                     radius = obj_modal.radius
 
                 # Calcul du rayon pour les mouvements circulaires et determination du plan de travail
-                work_plane = obj_modal.work_plane
+                # work_plane = obj_modal.work_plane
                 if match_i and match_j:
                     radius = math.sqrt((float(match_i.group(1))) ** 2 + (float(match_j.group(1))) ** 2)
                     work_plane = self.work_plane_by_code[self.xy_work_plane_code]
@@ -166,14 +165,11 @@ class IsoInterpreter:
                 if match_tool:
                     tool = int(match_tool.group(1))
                     tool_offset = int(match_tool.group(2))
-                    position_x = self.home_tool_x
-                    position_y = self.home_tool_y
-                    position_z = self.home_tool_z
-                    work_plane = self.work_plane_by_code[self.default_work_plane]
-
+                    work_plane = self.work_plane_by_code[self.machine.get_tool_work_plane_code(tool)]
                 else:
                     tool = obj_modal.tool
                     tool_offset = obj_modal.tool_offset
+                    work_plane = obj_modal.work_plane
 
                 # Recuperation du type de mouvement et du mode (absolu/incremental)
                 if match_move_rapid:
@@ -226,7 +222,7 @@ class IsoInterpreter:
                     else:
                         move_type = MoveType.CIRCULAR_MOVE_CCW
 
-                # Recuperation du plan de travail
+                # Recuperation du plan de travail si explicitement indique sur la ligne, sinon on prend le plan de travail de l'outil
                 if match_work_plane_xy:
                     work_plane = self.work_plane_by_code[self.xy_work_plane_code]
                 elif match_work_plane_xz:
@@ -385,7 +381,6 @@ class Modal:
             self.xz_work_plane_code = self.machine.xz_work_plane_code
             self.yz_work_plane_code = self.machine.yz_work_plane_code
             self.work_plane_by_code = _build_work_plane_map(self.xy_work_plane_code, self.xz_work_plane_code, self.yz_work_plane_code)
-            self.default_work_plane = self.machine.default_work_plane
             self.home_tool_x = self.machine.home_tool_x
             if self.x_diameter:
                 self.home_tool_x = self.home_tool_x / 2
@@ -403,7 +398,7 @@ class Modal:
         self.position_y = self.home_tool_y
         self.position_z = self.home_tool_z
         self.position_c = 0.0
-        self.work_plane = self.work_plane_by_code[self.default_work_plane]
+        self.work_plane = None
 
 
 class Line:

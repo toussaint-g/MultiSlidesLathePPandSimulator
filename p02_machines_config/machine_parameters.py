@@ -23,6 +23,35 @@ def normalize_gm_code(code):
     return f"{prefix}{int(number)}"
 
 
+def _normalize_spindle_direction(spindle_direction: object | None) -> str | None:
+    """Convertit un sens de broche en chaine exploitable sans dependre d'un enum externe."""
+    if spindle_direction is None:
+        return None
+    if isinstance(spindle_direction, str):
+        return spindle_direction.upper()
+    direction_value = getattr(spindle_direction, "value", spindle_direction)
+    return str(direction_value).upper()
+
+
+def _normalize_axis_vector(workplane_vector: object) -> tuple[float, float, float]:
+    """Normalise un vecteur de plan en axe principal, independamment du signe."""
+    if not isinstance(workplane_vector, (list, tuple)) or len(workplane_vector) != 3:
+        raise ValueError("MachineConfigError: vecteur workplane invalide")
+
+    try:
+        vector = tuple(abs(float(component)) for component in workplane_vector)
+    except (TypeError, ValueError):
+        raise ValueError("MachineConfigError: vecteur workplane invalide")
+
+    if vector == (0.0, 0.0, 1.0):
+        return vector
+    if vector == (0.0, 1.0, 0.0):
+        return vector
+    if vector == (1.0, 0.0, 0.0):
+        return vector
+    raise ValueError("MachineConfigError: vecteur workplane non supporte")
+
+
 @dataclass
 class MachineParameters:
     """Regroupe les donnees utiles extraites du JSON machine pour un canal."""
@@ -52,7 +81,6 @@ class MachineParameters:
     xy_work_plane_code: str
     xz_work_plane_code: str
     yz_work_plane_code: str
-    default_work_plane: str | None
     home_tool_x: float
     home_tool_y: float
     home_tool_z: float
@@ -63,6 +91,74 @@ class MachineParameters:
     ipathvector: list[float] | None
     jpathvector: list[float] | None
     kpathvector: list[float] | None
+
+    def get_tool_config(self, tool_number: int) -> JsonDict | None:
+        """Retourne la configuration JSON de l'outil pour le canal courant."""
+        tool_number_str = str(tool_number)
+        for tool_config in self.channel_tools:
+            if tool_config.get("toolname") == tool_number_str:
+                return tool_config
+        return None
+
+    def get_spindle_code_for_tool(self, tool_number: int, spindle_direction: object | None = None) -> str:
+        """Retourne le code ISO de broche associe a l'outil et au sens demandes."""
+        tool_config = self.get_tool_config(tool_number)
+        if tool_config is None:
+            raise ValueError(f"MachineConfigError: outil {tool_number} introuvable dans le canal {self.channel_name}")
+
+        normalized_direction = _normalize_spindle_direction(spindle_direction)
+        if normalized_direction == "CLW":
+            spindle_code = tool_config.get("spindleclwstart")
+        elif normalized_direction == "CCLW":
+            spindle_code = tool_config.get("spindlecclwstart")
+        elif normalized_direction is None:
+            spindle_code = tool_config.get("spindlestop")
+        else:
+            raise ValueError(f"MachineConfigError: sens de broche '{normalized_direction}' non supporte")
+
+        if not spindle_code:
+            raise ValueError(
+                f"MachineConfigError: code de broche absent pour l'outil {tool_number} dans le canal {self.channel_name}"
+            )
+        return normalize_gm_code(str(spindle_code))
+
+
+
+
+
+
+
+
+
+
+
+    def get_work_plane_code_from_vector(self, workplane_vector: object) -> str:
+        """Retourne le code G17/G18/G19 correspondant au vecteur de plan declare dans le JSON."""
+        normalized_vector = _normalize_axis_vector(workplane_vector)
+        if normalized_vector == (0.0, 0.0, 1.0):
+            return self.xy_work_plane_code
+        if normalized_vector == (0.0, 1.0, 0.0):
+            return self.xz_work_plane_code
+        return self.yz_work_plane_code
+    
+
+    def get_tool_work_plane_code(self, tool_number: int) -> str:
+        """Retourne le code de plan de travail associe a l'outil."""
+        tool_config = self.get_tool_config(tool_number)
+        if tool_config is None:
+            raise ValueError(f"MachineConfigError: outil {tool_number} introuvable dans le canal {self.channel_name}")
+        return self.get_work_plane_code_from_vector(tool_config.get("workplane"))
+
+
+
+
+
+
+
+
+
+
+
 
     @classmethod
     def from_machine_config(cls, machine_config: JsonDict, *, home_x_mode: str = "machine") -> "MachineParameters":
@@ -108,19 +204,38 @@ class MachineParameters:
                 feedrate_prefix=machine_informations["feedrateprefix"],
                 feedrate_per_minute=normalize_gm_code(machine_informations["feedrateperminute"]),
                 feedrate_per_revolution=normalize_gm_code(machine_informations["feedrateperrevolution"]),
-                coolant_start_code=normalize_gm_code(coolant_start_code) if coolant_start_code else None,
-                coolant_stop_code=normalize_gm_code(coolant_stop_code) if coolant_stop_code else None,
+                coolant_start_code=normalize_gm_code(coolant_start_code),
+                coolant_stop_code=normalize_gm_code(coolant_stop_code),
                 endprogram_code=normalize_gm_code(machine_informations["endprogram"]),
                 startandendfile_character=machine_informations["startandendfilecharacter"],
                 block_prefix=machine_informations["blockprefix"],
                 block_increment=machine_informations["blockincrement"],
+
+
+
+
+
+
+
+
                 xy_work_plane_code=normalize_gm_code(machine_informations["xyworkplane"]),
                 xz_work_plane_code=normalize_gm_code(machine_informations["xzworkplane"]),
                 yz_work_plane_code=normalize_gm_code(machine_informations["yzworkplane"]),
-                default_work_plane=normalize_gm_code(machine_informations["defaultworkplane"]) if machine_informations.get("defaultworkplane") else None,
                 home_tool_x=home_tool_x,
                 home_tool_y=channel_config["hometool"]["y"],
                 home_tool_z=channel_config["hometool"]["z"],
+
+
+
+
+
+
+
+
+
+
+
+
                 channel_tools=channel_config["listoftools"],
                 ipartvector=machine_informations.get("ipartvector"),
                 jpartvector=machine_informations.get("jpartvector"),
