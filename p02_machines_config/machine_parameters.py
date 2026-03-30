@@ -52,6 +52,17 @@ def _normalize_axis_vector(workplane_vector: object) -> tuple[float, float, floa
     raise ValueError("MachineConfigError: vecteur workplane non supporte")
 
 
+def _extract_home_tool_coordinates(home_tool: object) -> tuple[float, float, float]:
+    """Extrait les coordonnees home tool depuis une liste [x, y, z]."""
+    if isinstance(home_tool, (list, tuple)) and len(home_tool) == 3:
+        try:
+            return float(home_tool[0]), float(home_tool[1]), float(home_tool[2])
+        except (TypeError, ValueError):
+            raise ValueError("MachineConfigError: hometool invalide")
+
+    raise ValueError("MachineConfigError: hometool invalide")
+
+
 @dataclass
 class MachineParameters:
     """Regroupe les donnees utiles extraites du JSON machine pour un canal."""
@@ -94,9 +105,8 @@ class MachineParameters:
 
     def get_tool_config(self, tool_number: int) -> JsonDict | None:
         """Retourne la configuration JSON de l'outil pour le canal courant."""
-        tool_number_str = str(tool_number)
         for tool_config in self.channel_tools:
-            if tool_config.get("toolname") == tool_number_str:
+            if tool_config.get("toolnumber") == tool_number:
                 return tool_config
         return None
 
@@ -122,16 +132,6 @@ class MachineParameters:
             )
         return normalize_gm_code(str(spindle_code))
 
-
-
-
-
-
-
-
-
-
-
     def get_work_plane_code_from_vector(self, workplane_vector: object) -> str:
         """Retourne le code G17/G18/G19 correspondant au vecteur de plan declare dans le JSON."""
         normalized_vector = _normalize_axis_vector(workplane_vector)
@@ -141,24 +141,12 @@ class MachineParameters:
             return self.xz_work_plane_code
         return self.yz_work_plane_code
     
-
     def get_tool_work_plane_code(self, tool_number: int) -> str:
         """Retourne le code de plan de travail associe a l'outil."""
         tool_config = self.get_tool_config(tool_number)
         if tool_config is None:
             raise ValueError(f"MachineConfigError: outil {tool_number} introuvable dans le canal {self.channel_name}")
         return self.get_work_plane_code_from_vector(tool_config.get("workplane"))
-
-
-
-
-
-
-
-
-
-
-
 
     @classmethod
     def from_machine_config(cls, machine_config: JsonDict, *, home_x_mode: str = "machine") -> "MachineParameters":
@@ -176,7 +164,7 @@ class MachineParameters:
             machine_informations: JsonDict = machine_config["machineinformations"]  # type: ignore[assignment]
             channels_list: JsonDict = machine_config["channelslist"]  # type: ignore[assignment]
             channel_config: JsonDict = channels_list[channel_name]  # type: ignore[index]
-            home_tool_x = channel_config["hometool"]["x"]
+            home_tool_x, home_tool_y, home_tool_z = _extract_home_tool_coordinates(channel_config["hometool"])
             x_diameter = machine_informations["xdiameter"]
             if x_diameter:
                 if home_x_mode == "machine":
@@ -210,32 +198,12 @@ class MachineParameters:
                 startandendfile_character=machine_informations["startandendfilecharacter"],
                 block_prefix=machine_informations["blockprefix"],
                 block_increment=machine_informations["blockincrement"],
-
-
-
-
-
-
-
-
                 xy_work_plane_code=normalize_gm_code(machine_informations["xyworkplane"]),
                 xz_work_plane_code=normalize_gm_code(machine_informations["xzworkplane"]),
                 yz_work_plane_code=normalize_gm_code(machine_informations["yzworkplane"]),
                 home_tool_x=home_tool_x,
-                home_tool_y=channel_config["hometool"]["y"],
-                home_tool_z=channel_config["hometool"]["z"],
-
-
-
-
-
-
-
-
-
-
-
-
+                home_tool_y=home_tool_y,
+                home_tool_z=home_tool_z,
                 channel_tools=channel_config["listoftools"],
                 ipartvector=machine_informations.get("ipartvector"),
                 jpartvector=machine_informations.get("jpartvector"),

@@ -45,6 +45,8 @@ class IsoInterpreter:
             self.yz_work_plane_code = self.machine.yz_work_plane_code
             self.work_plane_by_code = _build_work_plane_map(self.xy_work_plane_code,self.xz_work_plane_code,self.yz_work_plane_code)
             self.home_tool_x = self.machine.home_tool_x
+            if self.x_diameter:
+                self.home_tool_x = self.home_tool_x / 2
             self.home_tool_y = self.machine.home_tool_y
             self.home_tool_z = self.machine.home_tool_z
         except KeyError:
@@ -166,6 +168,9 @@ class IsoInterpreter:
                     tool = int(match_tool.group(1))
                     tool_offset = int(match_tool.group(2))
                     work_plane = self.work_plane_by_code[self.machine.get_tool_work_plane_code(tool)]
+                    position_x = self.home_tool_x
+                    position_y = self.home_tool_y
+                    position_z = self.home_tool_z
                 else:
                     tool = obj_modal.tool
                     tool_offset = obj_modal.tool_offset

@@ -36,7 +36,7 @@ $$ OPERATION NAME : Changement outil tournage.1
 $$  Début de génération de: Changement outil tournage.1
 $$ TOOLCHANGEBEGINNING
 CUTTER/    0.000000
-TPRINT/T7 Porte-plaquette extérieur.1
+TPRINT/Porte-plaquette extérieur.1
 TDATA/TURN,    0.000000,    0.000000,    0.000000,QUADRANT,9,RADIUS,   $
  0.000000,$
 TYPE,MfgExternalTool,WEIGHT,,INV,0,ANGLE,    0.000000
