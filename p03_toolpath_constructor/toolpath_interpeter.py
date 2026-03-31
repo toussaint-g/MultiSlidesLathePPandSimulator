@@ -17,17 +17,6 @@ class ToolPathInterpreter:
         # Initialisation des variables
         self.machine = MachineParameters.from_config(machine_config, channel_name, home_x_mode="part")
         self.part_thickness = part_thickness
-        # Data machine
-        self.x_diameter = self.machine.x_diameter
-        self.home_tool_x = self.machine.home_tool_x
-        self.home_tool_y = self.machine.home_tool_y
-        self.home_tool_z = self.machine.home_tool_z
-        self.ipartvector = self.machine.ipartvector
-        self.jpartvector = self.machine.jpartvector
-        self.kpartvector = self.machine.kpartvector
-        self.ipathvector = self.machine.ipathvector
-        self.jpathvector = self.machine.jpathvector
-        self.kpathvector = self.machine.kpathvector
 
     @staticmethod
     def _extract_axis_sign(vector):
@@ -46,8 +35,8 @@ class ToolPathInterpreter:
 
     def get_polydata_symmetry_plane_vector(self):
         """Compare ipart/ipath et retourne ipart si inversion (symetrie necessaire)."""
-        if self._extract_axis_sign(self.ipartvector) != self._extract_axis_sign(self.ipathvector):
-            return {"name": "ipartvector", "vector": self.ipartvector}
+        if self._extract_axis_sign(self.machine.ipartvector) != self._extract_axis_sign(self.machine.ipathvector):
+            return {"name": "ipartvector", "vector": self.machine.ipartvector}
         return None
 
     def analyze(self, list_datas, resolution_cercle):
@@ -177,7 +166,7 @@ class ToolPathInterpreter:
                 current_tool)
 
         # Initialisation previous point
-        previous_point = [self.home_tool_x, self.home_tool_y, self.home_tool_z]
+        previous_point = [self.machine.home_tool_x, self.machine.home_tool_y, self.machine.home_tool_z]
 
         # Lecture datas
         for current_line in list_datas:
@@ -214,7 +203,7 @@ class ToolPathInterpreter:
                 current_tool = current_line.tool_number
 
                 # Initialisation du point hometool
-                previous_point = [self.home_tool_x, self.home_tool_y, self.home_tool_z]
+                previous_point = [self.machine.home_tool_x, self.machine.home_tool_y, self.machine.home_tool_z]
 
             if current_line.tool_number != 0:
                 current_point = [current_line.endpoint_x, current_line.endpoint_y, current_line.endpoint_z, current_line.endpoint_c]

@@ -30,19 +30,6 @@ def _normalize_gm_code(code):
 
 
 
-# def _build_work_plane_map(xy_code, xz_code, yz_code):
-#     """Associe les codes plan de travail du JSON aux plans XY/XZ/YZ internes."""
-#     return {
-#         _normalize_gm_code(xy_code): WorkPlaneType.XY,
-#         _normalize_gm_code(xz_code): WorkPlaneType.XZ,
-#         _normalize_gm_code(yz_code): WorkPlaneType.YZ,
-#     }
-
-# class WorkPlaneType(Enum):
-#     """Enum pour memoriser les types de plan de travail"""
-#     XY = [0.0, 0.0, 1.0]
-#     XZ = [0.0, 1.0, 0.0]
-#     YZ = [1.0, 0.0, 0.0]
 
 
 
@@ -126,7 +113,6 @@ class IsoWriter:
             self.emission_state.last_spindle_direction = spindle_direction
             self.emission_state.last_tool_number = tool_number
             
-    # TODO: Voir pour gerer les messages d'erreur dans ce style partout dans le code. 
     def spindle_stop(self, tool_number: int) -> None:
         """Arrete la broche."""
         self.emit(self.machine.get_spindle_code_for_tool(tool_number))

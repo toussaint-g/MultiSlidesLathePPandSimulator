@@ -9,11 +9,7 @@ class IsoAnalyzerWriter:
     def __init__(self, machine_config: JsonDict):
         self.digit_after_point_distance = 3
         self.digit_after_point_time = 4
-        try:
-            self.machine = MachineParameters.from_machine_config(machine_config, home_x_mode="machine")
-            self.rapidfeedrate = self.machine.rapidfeedrate
-        except KeyError:
-            raise ValueError("MachineConfigError: Cle 'rapidfeedrate' absente du fichier JSON")
+        self.machine = MachineParameters.from_machine_config(machine_config, home_x_mode="machine")
 
 
     def format_time(self, minutes):
@@ -150,7 +146,7 @@ class IsoAnalyzerWriter:
                     radius = entry.radius
 
                 if entry.move_type == 0 :
-                    feedrate = self.rapidfeedrate
+                    feedrate = self.machine.rapidfeedrate
                 else:
                     feedrate = entry.feedrate
 

@@ -48,6 +48,20 @@ def get_datetime_string():
     return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 
+def show_operation_error(title, error):
+    """Affiche une erreur utilisateur de maniere homogene dans l'interface."""
+    messagebox.showerror(title, str(error))
+
+
+def run_ui_action(error_title, action):
+    """Execute une action UI et affiche une messagebox en cas d'erreur."""
+    try:
+        return action()
+    except Exception as error:
+        show_operation_error(error_title, error)
+        return None
+
+
 
 
 
@@ -75,22 +89,17 @@ def apt_treatment(path_apt_file, path_export_file, machine_name, channel_name):
 
     #display_results(path_export_file)
 
-    try:
-        if not path_apt_file:
-            messagebox.showwarning("APT manquant", "Selectionne un fichier APT source.")
-            return
+    if not path_apt_file:
+        raise ValueError("Selectionne un fichier APT source.")
 
-        path_export_file.mkdir(parents=True, exist_ok=True)
+    path_export_file.mkdir(parents=True, exist_ok=True)
 
-        in_path = Path(path_apt_file)
-        out_path = path_export_file / (in_path.stem + ".debug")
+    in_path = Path(path_apt_file)
+    out_path = path_export_file / (in_path.stem + ".debug")
 
-        convert_file(str(in_path), str(out_path), machine_config, channel_name)
+    convert_file(str(in_path), str(out_path), machine_config, channel_name)
 
-        messagebox.showinfo("Conversion terminee", f"ISO genere :\n{out_path}")
-
-    except Exception as e:
-        messagebox.showerror("Erreur conversion", str(e))
+    messagebox.showinfo("Conversion terminee", f"ISO genere :\n{out_path}")
 
 
 
@@ -352,11 +361,15 @@ def main():
     tb.Label(main_frame, text="Generer le fichier ISO :", font=("Segoe UI", 16)).grid(column=0, row=18, sticky="w", padx=5, pady=5)
 
     # Section calculer les donnees
-    calculate_button_for_pp = tb.Button(main_frame, text="Start", bootstyle="success", command=lambda: apt_treatment(
-        Path(label_apt_for_pp.cget("text")),
-        Path(label_output_folder_for_pp.cget("text")) / get_datetime_string(),
-        selected_machine_for_pp.get(),
-        selected_channel_for_pp.get()))
+    calculate_button_for_pp = tb.Button(main_frame, text="Start", bootstyle="success", command=lambda: run_ui_action(
+        "Erreur conversion",
+        lambda: apt_treatment(
+            Path(label_apt_for_pp.cget("text")),
+            Path(label_output_folder_for_pp.cget("text")) / get_datetime_string(),
+            selected_machine_for_pp.get(),
+            selected_channel_for_pp.get(),
+        ),
+    ))
     calculate_button_for_pp.grid(column=0, row=19, sticky="w", pady=5)
     calculate_button_for_pp.config(state="disabled")  # Desactiver au debut
 
@@ -419,11 +432,15 @@ def main():
 
     # Section calculer les donnees
     tb.Label(main_frame, text="Analyser le fichier ISO :", font=("Segoe UI", 16)).grid(column=1, row=18, sticky="w", padx=5, pady=5)    
-    calculate_button_for_analyzer = tb.Button(main_frame, text="Start", bootstyle="success", command=lambda: gcode_treatment(
-        Path(label_iso_file_for_analyzer.cget("text")),
-        Path(label_output_folder_for_analyzer.cget("text")) / get_datetime_string(),
-        selected_machine_for_analyzer.get(),
-        selected_channel_for_analyzer.get()))
+    calculate_button_for_analyzer = tb.Button(main_frame, text="Start", bootstyle="success", command=lambda: run_ui_action(
+        "Erreur analyse ISO",
+        lambda: gcode_treatment(
+            Path(label_iso_file_for_analyzer.cget("text")),
+            Path(label_output_folder_for_analyzer.cget("text")) / get_datetime_string(),
+            selected_machine_for_analyzer.get(),
+            selected_channel_for_analyzer.get(),
+        ),
+    ))
     calculate_button_for_analyzer.grid(column=1, row=19, sticky="w", pady=5)
     calculate_button_for_analyzer.config(state="disabled")  # Desactiver au debut
 
@@ -447,7 +464,10 @@ def main():
              font=("Segoe UI", 16)).grid(column=2, row=13, sticky="w", padx=5, pady=5)
 
     visualize_button_for_analyzer = tb.Button(main_frame, text="Visualiser", bootstyle="primary", 
-                                 command=lambda: open_machine_image_for(selected_machine_for_analyzer.get()))
+                                 command=lambda: run_ui_action(
+                                     "Erreur image machine",
+                                     lambda: open_machine_image_for(selected_machine_for_analyzer.get()),
+                                 ))
     visualize_button_for_analyzer.grid(column=2, row=14, sticky="w", padx=5, pady=5)
 
     # Section decalage piece
@@ -469,12 +489,16 @@ def main():
 
     # Section Visualiser les trajectoires
     tb.Label(main_frame, text="Visualiser les trajectoires :", font=("Segoe UI", 16)).grid(column=2, row=18, sticky="w", padx=5, pady=5)
-    visualize_button_for_analyzer = tb.Button(main_frame, text="Start", bootstyle="success", command=lambda: viewer_launch(
-        Path(label_iso_file_for_analyzer.cget("text")), 
-        get_optional_path_from_label(label_stl),
-        selected_machine_for_analyzer.get(), 
-        selected_channel_for_analyzer.get(),
-        part_thickness_var.get()))
+    visualize_button_for_analyzer = tb.Button(main_frame, text="Start", bootstyle="success", command=lambda: run_ui_action(
+        "Erreur simulation",
+        lambda: viewer_launch(
+            Path(label_iso_file_for_analyzer.cget("text")), 
+            get_optional_path_from_label(label_stl),
+            selected_machine_for_analyzer.get(), 
+            selected_channel_for_analyzer.get(),
+            part_thickness_var.get(),
+        ),
+    ))
     visualize_button_for_analyzer.grid(column=2, row=19, sticky="w", padx=5, pady=5)
     visualize_button_for_analyzer.config(state="disabled")  # Desactiver au debut
 
@@ -486,4 +510,10 @@ def main():
     form.mainloop()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as error:
+        root = tk.Tk()
+        root.withdraw()
+        show_operation_error("Erreur demarrage", error)
+        root.destroy()
