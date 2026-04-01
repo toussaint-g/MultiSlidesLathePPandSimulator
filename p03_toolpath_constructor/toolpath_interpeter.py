@@ -71,6 +71,8 @@ class ToolPathInterpreter:
             if float(current_c) == float(previous_c):
                 return list(path_points), [float(current_c)] * len(path_points)
 
+            # Quand C change en meme temps qu'un deplacement XYZ, on insere un point
+            # duplique au debut pour separer visuellement la rotation du reste du mouvement.
             rotated_path_points = [path_points[0], path_points[0], *path_points[1:]]
             rotated_path_c_values = [float(previous_c), float(current_c), *([float(current_c)] * (len(path_points) - 1))]
             return rotated_path_points, rotated_path_c_values
@@ -98,6 +100,8 @@ class ToolPathInterpreter:
 
             obj_tool_path_builder.create_polyline(points_toolpath, vertex_toolpath, current_polyline_points)
             c_values_toolpath.extend(current_polyline_c_values)
+            # Le type de mouvement est porte au niveau cellule : une polyline
+            # correspond donc ici a un groupe homogene de segments.
             move_type_values.append(current_move_group_type)
             current_polyline_points = []
             current_polyline_c_values = []
@@ -118,6 +122,8 @@ class ToolPathInterpreter:
                 current_move_group_type = move_type_value
                 return
 
+            # Si deux segments se touchent deja en extremite, on evite de dupliquer
+            # inutilement le point commun dans la polyline finale.
             if current_polyline_points[-1] == path_points[0]:
                 current_polyline_points.extend(path_points[1:])
                 current_polyline_c_values.extend(path_c_values[1:])
@@ -136,6 +142,8 @@ class ToolPathInterpreter:
             poly_data_toolpath.SetPoints(points_toolpath)
             poly_data_toolpath.SetLines(vertex_toolpath)
 
+            # On enrichit ensuite le polydata avec les donnees necessaires au viewer :
+            # angle C par point, coordonnees d'origine et type de mouvement par cellule.
             poly_data_toolpath = obj_vtk_functions.add_c_angle_to_polydata(
                 poly_data_toolpath,
                 c_values_toolpath,

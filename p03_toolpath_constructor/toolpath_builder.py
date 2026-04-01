@@ -86,6 +86,7 @@ class ToolPathBuilder:
         midpoint = (s2 + e2) / 2
         h = np.sqrt(radius**2 - (lg_corde / 2) ** 2)
 
+        # Le centre du cercle se trouve sur la mediatrice de la corde.
         corde_dir = corde / lg_corde
         perp = np.array([-corde_dir[1], corde_dir[0]])
         center1 = midpoint + h * perp
@@ -95,7 +96,8 @@ class ToolPathBuilder:
             vec = point - center
             return np.arctan2(vec[1], vec[0])
 
-        # Selection du centre selon le sens de parcours.
+        # Les deux centres possibles donnent chacun un sens de parcours.
+        # On choisit celui qui correspond au sens CW/CCW demande.
         a1_1 = angle_from(center1, s2)
         a2_1 = angle_from(center1, e2)
         delta_1 = (a2_1 - a1_1) % (2 * np.pi)
@@ -112,6 +114,9 @@ class ToolPathBuilder:
             if angle_end < angle_start:
                 angle_end += 2 * np.pi
 
+        # Le nombre de segments est deduit de la longueur d'arc voulue et de la
+        # resolution cible, puis on interpole aussi la composante hors-plan pour
+        # supporter les arcs helicoidaux.
         arc_angle = abs(angle_end - angle_start)
         arc_length = radius * arc_angle
 
@@ -128,6 +133,7 @@ class ToolPathBuilder:
                 ]
             )
             pn = sn + i * n_step
+            # Retour au repere 3D global a partir de la base locale du plan.
             p3 = p2[0] * u + p2[1] * v + pn * n
             path_points.append((float(p3[0]), float(p3[1]), float(p3[2])))
 

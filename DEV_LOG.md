@@ -1,12 +1,9 @@
-# Suivi de dev
+# Suivi de developpement
 
 ## Auteur:
 **Toussaint Guillaume**
 
 ## Le 01/04/2026:
-
-### Tests effectues:
-
 
 ### Prochaines actions:
 - Gestion des HELICAL et des CYLNDR.

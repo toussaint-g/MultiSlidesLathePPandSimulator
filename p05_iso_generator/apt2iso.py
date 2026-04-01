@@ -65,24 +65,6 @@ class IsoWriter:
         """Ajoute un commentaire de canal."""
         self.emit(f"(CANAL {channel_number})")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
     # TODO: Pas assez de verif, a reprendre
 
     def tool_change(self, tool_number: int, tool_comment: str) -> None:
@@ -90,13 +72,6 @@ class IsoWriter:
         
         self.emit(f"({self.machine.toolname_prefix}{tool_number:02d}{tool_number:02d} - {tool_comment})")
         self.emit(f"{self.machine.toolname_prefix}{tool_number:02d}{tool_number:02d}")
-
-
-
-
-
-
-
 
     # TODO: Gestion surface constante (G96/G97) pas prise en compte pour l'instant, a voir si on en a besoin.
     def spindle_start(self, tool_number: int, spindle_speed: float, spindle_unit: SpindleUnit, spindle_direction: SpindleDirection) -> None:
@@ -107,33 +82,10 @@ class IsoWriter:
             self.emission_state.last_spindle_direction = spindle_direction
             self.emission_state.last_tool_number = tool_number
             
+
     def spindle_stop(self, tool_number: int) -> None:
         """Arrete la broche."""
         self.emit(self.machine.get_spindle_code_for_tool(tool_number))
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     def linear_move(self, tool_number: int, motion_mode: MotionMode, cutcom_mode: ToolComp, feedrate_value: float,
@@ -142,13 +94,10 @@ class IsoWriter:
         motion_code = self.machine.rapid_move_code if motion_mode == MotionMode.RAPID else self.machine.linear_move_code
         axis_words = [motion_code]
 
-
         # Si le mode de compensation d'outil a change, on l'ajoute a la ligne de mouvement.
         if self.emission_state.last_toolComp_mode != cutcom_mode:
             axis_words.append(self.machine.get_tool_compensation_code_for_tool(tool_number, cutcom_mode))
             self.emission_state.last_toolComp_mode = cutcom_mode
-
-
 
         # Si une coordonnee a change, on l'ajoute a la ligne de mouvement et on met a jour la position courante.
         if position_x is not None:
@@ -162,6 +111,7 @@ class IsoWriter:
         if position_z is not None:
             axis_words.append(f"Z{format_float_to_iso(position_z)}")
             self.emission_state.last_z_position = position_z
+
         # Si l'unite d'avance a change, on l'ajoute a la ligne de mouvement.
         if self.emission_state.last_feedrate_unit != feedrate_unit:
             if feedrate_unit == FeedrateUnit.MMPM:
@@ -170,23 +120,14 @@ class IsoWriter:
             else:
                 axis_words.append(f"{self.machine.feedrate_per_revolution}")
                 self.emission_state.last_feedrate_unit = FeedrateUnit.MMPR
+
         # Si l'avance a change, on l'ajoute a la ligne de mouvement.
         if self.emission_state.last_feedrate_value != feedrate_value:
             axis_words.append(f"F{format_float_to_iso(feedrate_value)}")
             self.emission_state.last_feedrate_value = feedrate_value
+
         # Si au moins une information a changee, on emet la ligne de mouvement.
-
-
-        #if len(axis_words) > 1:
         self.emit(" ".join(axis_words))
-
-
-
-
-
-
-
-
 
 
     def circular_move(self, work_plane: str, motion_code: str, feedrate_value: float, feedrate_unit: Optional[FeedrateUnit],
@@ -244,18 +185,6 @@ class IsoWriter:
             self.emission_state.last_feedrate_value = feedrate_value
 
         self.emit(" ".join(axis_words))
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # -----------------------------
@@ -329,17 +258,6 @@ def h_op_name(apt_keyword: str, argument_text: str, state: WriterState, iso_writ
     state.bloc_number +=  int(iso_writer.machine.block_increment)
     iso_writer.op_name(state.bloc_number, argument_text)
 
-
-
-
-
-
-
-
-
-
-
-
 def h_tprint(apt_keyword: str, argument_text: str, state: WriterState, iso_writer: IsoWriter) -> None:
     """Gere la commande TPRINT en la commentant dans l'ISO et en extrayant le commentaire d'outil pour les changements d'outil."""
     # Exemple accepte : TPRINT/Fraise D1.0 X 3
@@ -356,14 +274,6 @@ def h_tdata(apt_keyword: str, argument_text: str, state: WriterState, iso_writer
     tool_type = ToolType(str(tdata_tokens[0]))
     state.tool_type = tool_type
     
-
-
-
-
-
-
-
-
 # TODO: Voir pour degagement avant changement d'outil.
 def h_loadtl(apt_keyword: str, argument_text: str, state: WriterState, iso_writer: IsoWriter) -> None:
     """Met a jour le numero d'outil et emet les lignes ISO correspondantes si necessaire."""
@@ -373,6 +283,8 @@ def h_loadtl(apt_keyword: str, argument_text: str, state: WriterState, iso_write
     tool_number = int(tool_tokens[0])
     previous_tool_number = state.tool_number
 
+    # En fraisage, un changement d'outil implique d'arreter la broche si elle
+    # etait encore consideree active dans l'etat logique courant.
     if state.previous_tool_type == ToolType.MILL and state.spindle_on:
         iso_writer.spindle_stop(previous_tool_number)
         state.spindle_on = False
@@ -387,6 +299,8 @@ def h_loadtl(apt_keyword: str, argument_text: str, state: WriterState, iso_write
         state.position_x = iso_writer.machine.home_tool_x
     state.position_y = iso_writer.machine.home_tool_y
     state.position_z = iso_writer.machine.home_tool_z
+
+
 
 
 
@@ -411,18 +325,6 @@ def h_spindle(apt_keyword: str, argument_text: str, state: WriterState, iso_writ
     state.spindle_direction = spindle_direction
     state.spindle_on = True
     iso_writer.spindle_start(state.tool_number, spindle_speed, spindle_unit, spindle_direction)
-
-
-
-
-
-
-
-
-
-
-
-
 
 def h_rapid(apt_keyword: str, argument_text: str, state: WriterState, iso_writer: IsoWriter) -> None:
     """Le prochain GOTO utilisera G0."""
@@ -454,6 +356,8 @@ def h_goto(apt_keyword: str, argument_text: str, state: WriterState, iso_writer:
     x_out = None
     y_out = None
     z_out = None
+    # On filtre les petites variations numeriques issues de l'APT afin de ne
+    # pas reemettre des blocs ISO pour des ecarts purement flottants.
     # Si une coordonnee a change de plus que la tolerance, on l'ajoute a la ligne de mouvement et on met a jour la position courante.
     if abs(new_x_value - state.position_x) > tolerance:
         state.position_x = new_x_value
@@ -469,21 +373,12 @@ def h_goto(apt_keyword: str, argument_text: str, state: WriterState, iso_writer:
         iso_writer.linear_move(state.tool_number, state.motion_mode, state.toolComp_mode, state.feedrate_value,
                                state.feedrate_unit, position_x=x_out, position_y=y_out, position_z=z_out)
 
-
-
 def h_cutcom(apt_keyword: str, argument_text: str, state: WriterState, iso_writer: IsoWriter) -> None:
     """Met a jour le mode de compensation d'outil et emet les lignes ISO correspondantes si necessaire."""
     # Exemple accepte : CUTCOM/LEFT
     cutcom_tokens = csv_tokens(argument_text)
     cutcom_mode = ToolComp(cutcom_tokens[0])
     state.toolComp_mode = cutcom_mode
-
-
-
-
-
-
-
 
 def h_indirv(apt_keyword: str, argument_text: str, state: WriterState, iso_writer: IsoWriter) -> None:
     """Memorise le vecteur tangent utilise par TLON pour choisir le sens de l'arc."""
@@ -492,9 +387,11 @@ def h_indirv(apt_keyword: str, argument_text: str, state: WriterState, iso_write
     state.indirv_y = coordinates[1]
     state.indirv_z = coordinates[2]
 
-
 def h_tlon(apt_keyword: str, argument_text: str, state: WriterState, iso_writer: IsoWriter) -> None:
     """Convertit un TLON CIRCLE/ON/LINE en interpolation circulaire ISO."""
+    # TLON decrit ici un raccord entre le cercle courant et une ligne support.
+    # L'idee est de projeter toute la geometrie dans le plan outil, calculer le
+    # point d'intersection utile en 2D, puis reconstruire le point final 3D.
     geometry_match = re.search(r"\(CIRCLE/\s*([^)]+?)\s*\),\s*ON,\s*\(LINE/\s*([^)]+?)\s*\)", argument_text, re.IGNORECASE)
     if not geometry_match:
         iso_writer.comment(f"NON GERE: TLON/{argument_text}")
@@ -517,6 +414,8 @@ def h_tlon(apt_keyword: str, argument_text: str, state: WriterState, iso_writer:
         iso_writer.comment(f"NON GERE: TLON/{argument_text}")
         return
 
+    # Le plan de travail n'est plus deduit uniquement de la geometrie :
+    # on s'aligne sur le workplane declare sur l'outil dans la config machine.
     work_plane, work_plane_code = iso_writer.machine.get_tool_geometry_work_plane(state.tool_number)
     if work_plane == "XY":
         constant_value = center_z
@@ -540,6 +439,8 @@ def h_tlon(apt_keyword: str, argument_text: str, state: WriterState, iso_writer:
             iso_writer.comment(f"NON GERE: TLON/{argument_text} (geometrie hors plan outil {work_plane_code})")
             return
 
+    # Toutes les decisions geometriques sont prises dans le repere local (u, v)
+    # du plan de travail : centre du cercle, ligne support et point de depart.
     start_u, start_v = geometry_project_point_to_plane(work_plane, start_x, start_y, start_z)
     center_u, center_v = geometry_project_point_to_plane(work_plane, center_x, center_y, center_z)
     line_start_u, line_start_v = geometry_project_point_to_plane(work_plane, line_start_x, line_start_y, line_start_z)
@@ -547,6 +448,8 @@ def h_tlon(apt_keyword: str, argument_text: str, state: WriterState, iso_writer:
     radial_u = start_u - center_u
     radial_v = start_v - center_v
 
+    # INDIRV fournit la direction tangente souhaitee au depart. On compare cette
+    # direction avec les tangentes CW/CCW possibles pour choisir entre G2 et G3.
     cw_tangent_u, cw_tangent_v = geometry_cw_tangent_vector(work_plane, radial_u, radial_v)
     ccw_tangent_u, ccw_tangent_v = geometry_ccw_tangent_vector(work_plane, radial_u, radial_v)
     cw_alignment = cw_tangent_u * indirv_u + cw_tangent_v * indirv_v
@@ -567,6 +470,9 @@ def h_tlon(apt_keyword: str, argument_text: str, state: WriterState, iso_writer:
         iso_writer.comment(f"NON GERE: TLON/{argument_text}")
         return
 
+    # L'intersection retenue doit idealement etre "devant" le debut de la ligne
+    # (t >= 0). Si ce n'est pas le cas, on prend quand meme la solution la plus proche
+    # pour garder un comportement deterministe.
     forward_intersections = [intersection for intersection in intersections if intersection[0] >= -tolerance]
     if forward_intersections:
         selected_intersection = min(forward_intersections, key=lambda intersection: intersection[0])
@@ -574,6 +480,7 @@ def h_tlon(apt_keyword: str, argument_text: str, state: WriterState, iso_writer:
         selected_intersection = min(intersections, key=lambda intersection: abs(intersection[0]))
 
     _, end_u, end_v = selected_intersection
+    # Le point final calcule en 2D est retransforme en XYZ avant emission ISO.
     end_x, end_y, end_z = geometry_build_point_from_plane(work_plane, end_u, end_v, constant_value)
 
     state.position_x = end_x

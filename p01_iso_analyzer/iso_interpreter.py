@@ -110,6 +110,7 @@ class IsoInterpreter:
                     else:
                         position_x = float(match_x.group(1))
                 else:
+                    # En modal, une coordonnee absente reutilise la derniere valeur connue.
                     position_x = obj_modal.position_x
 
                 if match_y:
@@ -155,6 +156,8 @@ class IsoInterpreter:
                 if match_tool:
                     tool = int(match_tool.group(1))
                     tool_offset = int(match_tool.group(2))
+                    # Lors d'un changement d'outil, l'analyse repart de la position home tool
+                    # du canal et du plan de travail declare sur l'outil dans la config machine.
                     work_plane = self.work_plane_by_code[self.machine.get_tool_work_plane_code(tool)]
                     position_x = home_tool_x
                     position_y = home_tool_y
@@ -200,6 +203,8 @@ class IsoInterpreter:
                     distance_in_material = distance
                     move_type = MoveType.LINEAR_MOVE
                 else:
+                    # Pour un arc, le rayon peut venir soit d'un R explicite, soit des IJK
+                    # recalcules plus haut dans la boucle.
                     distance = obj_mathematical_functions.circular_distance_3D(
                             obj_modal.position_x,
                             obj_modal.position_y,
@@ -256,7 +261,8 @@ class IsoInterpreter:
                 
                 lines.append(obj_line)
 
-                # Mise a jour des donnees modales
+                # La ligne est maintenant analysee : on propage les valeurs modales
+                # pour qu'elles servent de reference a la ligne suivante.
                 obj_modal.position_x = position_x
                 obj_modal.position_y = position_y
                 obj_modal.position_z = position_z
