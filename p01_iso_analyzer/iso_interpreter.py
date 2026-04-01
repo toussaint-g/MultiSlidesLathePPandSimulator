@@ -138,13 +138,13 @@ class IsoInterpreter:
                 # work_plane = obj_modal.work_plane
                 if match_i and match_j:
                     radius = math.sqrt((float(match_i.group(1))) ** 2 + (float(match_j.group(1))) ** 2)
-                    work_plane = self.work_plane_by_code[self.machine.xy_work_plane_code]
+                    #work_plane = self.work_plane_by_code[self.machine.xy_work_plane_code]
                 elif match_i and match_k:
                     radius = math.sqrt((float(match_i.group(1))) ** 2 + (float(match_k.group(1))) ** 2)
-                    work_plane = self.work_plane_by_code[self.machine.xz_work_plane_code]
+                    #work_plane = self.work_plane_by_code[self.machine.xz_work_plane_code]
                 elif match_j and match_k:
                     radius = math.sqrt((float(match_j.group(1))) ** 2 + (float(match_k.group(1))) ** 2)
-                    work_plane = self.work_plane_by_code[self.machine.yz_work_plane_code]
+                    #work_plane = self.work_plane_by_code[self.machine.yz_work_plane_code]
                 
                 # Recuperation de l'avance, de l'outil et du correcteur d'outil
                 if match_feedrate:
@@ -216,12 +216,12 @@ class IsoInterpreter:
                         move_type = MoveType.CIRCULAR_MOVE_CCW
 
                 # Recuperation du plan de travail si explicitement indique sur la ligne, sinon on prend le plan de travail de l'outil
-                if match_work_plane_xy:
-                    work_plane = self.work_plane_by_code[self.machine.xy_work_plane_code]
-                elif match_work_plane_xz:
-                    work_plane = self.work_plane_by_code[self.machine.xz_work_plane_code]
-                elif match_work_plane_yz:
-                    work_plane = self.work_plane_by_code[self.machine.yz_work_plane_code]
+                # if match_work_plane_xy:
+                #     work_plane = self.work_plane_by_code[self.machine.xy_work_plane_code]
+                # elif match_work_plane_xz:
+                #     work_plane = self.work_plane_by_code[self.machine.xz_work_plane_code]
+                # elif match_work_plane_yz:
+                #     work_plane = self.work_plane_by_code[self.machine.yz_work_plane_code]
 
                 # Recuperation des differents temps
                 # Calcul du temps de mouvement et du temps productif

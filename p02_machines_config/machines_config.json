@@ -103,6 +103,8 @@
         "xyworkplane": "G17",
         "xzworkplane": "G18",
         "yzworkplane": "G19",
+        "compensationleft": "G41",
+        "compensationright": "G42",
         "coolantstart": "M8",
         "coolantstop": "M9",
         "endprogram": "M30",

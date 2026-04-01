@@ -148,6 +148,17 @@ class MachineParameters:
             raise ValueError(f"MachineConfigError: outil {tool_number} introuvable dans le canal {self.channel_name}")
         return self.get_work_plane_code_from_vector(tool_config.get("workplane"))
 
+    def get_tool_geometry_work_plane(self, tool_number: int) -> tuple[str, str]:
+        """Retourne le plan geometrique XY/XZ/YZ et son code ISO pour l'outil."""
+        work_plane_code = self.get_tool_work_plane_code(tool_number)
+        if work_plane_code == self.xy_work_plane_code:
+            return "XY", work_plane_code
+        if work_plane_code == self.xz_work_plane_code:
+            return "XZ", work_plane_code
+        if work_plane_code == self.yz_work_plane_code:
+            return "YZ", work_plane_code
+        raise ValueError(f"MachineConfigError: code plan de travail '{work_plane_code}' non supporte")
+
     @classmethod
     def from_machine_config(cls, machine_config: JsonDict, *, home_x_mode: str = "machine") -> "MachineParameters":
         """Construit les parametres a partir du premier canal disponible."""
@@ -201,6 +212,8 @@ class MachineParameters:
                 xy_work_plane_code=normalize_gm_code(machine_informations["xyworkplane"]),
                 xz_work_plane_code=normalize_gm_code(machine_informations["xzworkplane"]),
                 yz_work_plane_code=normalize_gm_code(machine_informations["yzworkplane"]),
+                compensation_left_code=normalize_gm_code(machine_informations.get("compensationleft")),
+                compensation_right_code=normalize_gm_code(machine_informations.get("compensationright")),
                 home_tool_x=home_tool_x,
                 home_tool_y=home_tool_y,
                 home_tool_z=home_tool_z,

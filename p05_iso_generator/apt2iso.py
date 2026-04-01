@@ -4,7 +4,6 @@ from __future__ import annotations
 from typing import Callable, Optional
 from functools import partial
 import re
-from enum import Enum
 from p02_machines_config.machine_parameters import JsonDict, MachineParameters
 from p05_iso_generator.parameters_enums import FeedrateUnit, MotionMode, SpindleDirection, SpindleUnit, ToolType
 from p05_iso_generator.geometric_calculations import build_point_from_plane as geometry_build_point_from_plane, ccw_tangent_vector as geometry_ccw_tangent_vector, cw_tangent_vector as geometry_cw_tangent_vector, line_circle_intersections_2d as geometry_line_circle_intersections_2d, project_point_to_plane as geometry_project_point_to_plane
@@ -18,15 +17,6 @@ def format_float_to_iso(numeric_value: float) -> str:
     """Formatte un nombre pour l'ISO en supprimant les zeros inutiles."""
     formatted_value = f"{numeric_value:.3f}".rstrip("0").rstrip(".")
     return formatted_value if formatted_value else "0"
-
-def _normalize_gm_code(code):
-    """Normalise un code G/M numerique (ex: G00 -> G0, M06 -> M6)."""
-    normalized_code = code.strip().upper()
-    match = re.fullmatch(r'([A-Z]+)0*(\d+)', normalized_code)
-    if not match:
-        return normalized_code
-    prefix, number = match.groups()
-    return f"{prefix}{int(number)}"
 
 
 
@@ -52,6 +42,10 @@ class IsoWriter:
     def comment(self, comment_text: str) -> None:
         """Ajoute un commentaire ISO a la sortie."""
         self.emit(f"({comment_text})")
+
+    def insert(self, insert_text: str) -> None:
+        """Ajoute une ligne d'insertion a la sortie."""
+        self.emit(f"{insert_text}")
 
     def header(self) -> None:
         """Ajoute l'en-tete minimal pour un programme de fraisage en coordonnees absolues."""
@@ -306,6 +300,10 @@ def h_comment(apt_keyword: str, argument_text: str, state: WriterState, iso_writ
     """Gere les commandes de type commentaire en les ecrivant telles quelles dans un commentaire ISO."""
     iso_writer.comment(f"{text_info}: {argument_text.upper()}" if text_info else argument_text.upper())
 
+def h_insert(apt_keyword: str, argument_text: str, state: WriterState, iso_writer: IsoWriter) -> None:
+    """Gere la commande INSERT en ecrivant le nom du fichier insere comme un commentaire ISO."""
+    iso_writer.insert(argument_text)
+
 def h_channel(apt_keyword: str, argument_text: str, state: WriterState, iso_writer: IsoWriter) -> None:
     """Gere la commande CHANNEL en la commentant dans l'ISO."""
     # Exemple accepte : CHANNEL/1
@@ -329,8 +327,6 @@ def h_op_name(apt_keyword: str, argument_text: str, state: WriterState, iso_writ
 
 
 
-
-# TODO: prendre dans TDATA MILL/TURN, puis LOAD pour le N d'outil, puis spindle pour la vitesse de broche. Apres seulement declencher l'ecriture des lignes ISO.
 
 def h_tprint(apt_keyword: str, argument_text: str, state: WriterState, iso_writer: IsoWriter) -> None:
     """Gere la commande TPRINT en la commentant dans l'ISO et en extrayant le commentaire d'outil pour les changements d'outil."""
@@ -356,24 +352,20 @@ def h_tdata(apt_keyword: str, argument_text: str, state: WriterState, iso_writer
 
 
 
-    
-
 # TODO: Voir pour degagement avant changement d'outil.
 def h_loadtl(apt_keyword: str, argument_text: str, state: WriterState, iso_writer: IsoWriter) -> None:
     """Met a jour le numero d'outil et emet les lignes ISO correspondantes si necessaire."""
     # Exemple fraisage : LOADTL/10,ADJUST,1,SPINDL,15915.494300,MILL
     # Exemple tournage : LOADTL/1,ADJUST,9,TURN
     tool_tokens = csv_tokens(argument_text)
-    tool_number = int(tool_tokens[0]) # TODO: Voir si c'est bien le numero d'outil.
+    tool_number = int(tool_tokens[0])
     previous_tool_number = state.tool_number
-    # previous_tool_type = state.tool_type
 
     if state.previous_tool_type == ToolType.MILL and state.spindle_on:
         iso_writer.spindle_stop(previous_tool_number)
         state.spindle_on = False
 
     state.tool_number = tool_number
-    # state.tool_type = state.previous_tool_type
     state.previous_tool_type = None
     # Apres un changement d'outil, on suppose que la machine revient a la
     # position de reference de l'outil pour eviter les deplacements rapides inattendus.
@@ -504,27 +496,32 @@ def h_tlon(apt_keyword: str, argument_text: str, state: WriterState, iso_writer:
     line_start_x, line_start_y, line_start_z, line_end_x, line_end_y, line_end_z = line_values
     tolerance = float(iso_writer.machine.calculation_tolerance)
 
-    if abs(start_y - center_y) <= tolerance and abs(line_start_y - line_end_y) <= tolerance:
-        work_plane = "XZ"
-        work_plane_code = iso_writer.machine.xz_work_plane_code
-        constant_value = center_y
-        indirv_u = state.indirv_x if state.indirv_x is not None else 0.0
-        indirv_v = state.indirv_z if state.indirv_z is not None else 0.0
-    elif abs(start_z - center_z) <= tolerance and abs(line_start_z - line_end_z) <= tolerance:
-        work_plane = "XY"
-        work_plane_code = iso_writer.machine.xy_work_plane_code
+    if state.tool_number == 0:
+        iso_writer.comment(f"NON GERE: TLON/{argument_text}")
+        return
+
+    work_plane, work_plane_code = iso_writer.machine.get_tool_geometry_work_plane(state.tool_number)
+    if work_plane == "XY":
         constant_value = center_z
         indirv_u = state.indirv_x if state.indirv_x is not None else 0.0
         indirv_v = state.indirv_y if state.indirv_y is not None else 0.0
-    elif abs(start_x - center_x) <= tolerance and abs(line_start_x - line_end_x) <= tolerance:
-        work_plane = "YZ"
-        work_plane_code = iso_writer.machine.yz_work_plane_code
+        if abs(start_z - center_z) > tolerance or abs(line_start_z - line_end_z) > tolerance:
+            iso_writer.comment(f"NON GERE: TLON/{argument_text} (geometrie hors plan outil {work_plane_code})")
+            return
+    elif work_plane == "XZ":
+        constant_value = center_y
+        indirv_u = state.indirv_x if state.indirv_x is not None else 0.0
+        indirv_v = state.indirv_z if state.indirv_z is not None else 0.0
+        if abs(start_y - center_y) > tolerance or abs(line_start_y - line_end_y) > tolerance:
+            iso_writer.comment(f"NON GERE: TLON/{argument_text} (geometrie hors plan outil {work_plane_code})")
+            return
+    else:
         constant_value = center_x
         indirv_u = state.indirv_y if state.indirv_y is not None else 0.0
         indirv_v = state.indirv_z if state.indirv_z is not None else 0.0
-    else:
-        iso_writer.comment(f"NON GERE: TLON/{argument_text}")
-        return
+        if abs(start_x - center_x) > tolerance or abs(line_start_x - line_end_x) > tolerance:
+            iso_writer.comment(f"NON GERE: TLON/{argument_text} (geometrie hors plan outil {work_plane_code})")
+            return
 
     start_u, start_v = geometry_project_point_to_plane(work_plane, start_x, start_y, start_z)
     center_u, center_v = geometry_project_point_to_plane(work_plane, center_x, center_y, center_z)
@@ -622,6 +619,8 @@ DISPATCH: dict[str, Handler] = {
     "OP_NAME": h_op_name,
     # Commentaires generaux
     "PPRINT": h_comment,
+    # Insertion forcée
+    "INSERT": h_insert,
     # Outils
     "TPRINT": h_tprint,
     "TDATA": h_tdata,
