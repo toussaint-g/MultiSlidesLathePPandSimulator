@@ -9,11 +9,11 @@
 
 
 ### Prochaines actions:
-- Gesttion des HELICAL et des CYLNDR.
-- Gestion des orientations d'outils pour la generations des rotation C.
+- Gestion des HELICAL et des CYLNDR.
+- Gestion des orientations d'outils pour la generations des rotations C.
 
 ### Points a verifier (dans app):
-
+- Les arret de broche: rotation permanente en tournage et arret a chaque outil en fraisage. Voir aussi lors du chargement du 1er outil (-> pas de M5 avant l'appel du 1er outil dans le prog).
 
 ### Points a verifier (dans CATIA):
 

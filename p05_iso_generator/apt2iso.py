@@ -5,7 +5,7 @@ from typing import Callable, Optional
 from functools import partial
 import re
 from p02_machines_config.machine_parameters import JsonDict, MachineParameters
-from p05_iso_generator.parameters_enums import FeedrateUnit, MotionMode, SpindleDirection, SpindleUnit, ToolType
+from p02_machines_config.machine_enums import FeedrateUnit, MotionMode, SpindleDirection, SpindleUnit, ToolComp, ToolType
 from p05_iso_generator.geometric_calculations import build_point_from_plane as geometry_build_point_from_plane, ccw_tangent_vector as geometry_ccw_tangent_vector, cw_tangent_vector as geometry_cw_tangent_vector, line_circle_intersections_2d as geometry_line_circle_intersections_2d, project_point_to_plane as geometry_project_point_to_plane
 from p05_iso_generator.machine_state import EmissionState, WriterState
 
@@ -136,11 +136,20 @@ class IsoWriter:
 
 
 
-    def linear_move(self, motion_mode: MotionMode, feedrate_value: float, feedrate_unit: Optional[FeedrateUnit],
-             position_x=None, position_y=None, position_z=None) -> None:
+    def linear_move(self, tool_number: int, motion_mode: MotionMode, cutcom_mode: ToolComp, feedrate_value: float,
+                    feedrate_unit: Optional[FeedrateUnit], position_x=None, position_y=None, position_z=None) -> None:
         """Gere les mouvements lineaires en emettant le code de mouvement approprie et les coordonnees qui ont change."""
         motion_code = self.machine.rapid_move_code if motion_mode == MotionMode.RAPID else self.machine.linear_move_code
         axis_words = [motion_code]
+
+
+        # Si le mode de compensation d'outil a change, on l'ajoute a la ligne de mouvement.
+        if self.emission_state.last_toolComp_mode != cutcom_mode:
+            axis_words.append(self.machine.get_tool_compensation_code_for_tool(tool_number, cutcom_mode))
+            self.emission_state.last_toolComp_mode = cutcom_mode
+
+
+
         # Si une coordonnee a change, on l'ajoute a la ligne de mouvement et on met a jour la position courante.
         if position_x is not None:
             if self.machine.x_diameter:
@@ -165,7 +174,10 @@ class IsoWriter:
         if self.emission_state.last_feedrate_value != feedrate_value:
             axis_words.append(f"F{format_float_to_iso(feedrate_value)}")
             self.emission_state.last_feedrate_value = feedrate_value
-        # Si au moins une information a change, on emet la ligne de mouvement.
+        # Si au moins une information a changee, on emet la ligne de mouvement.
+
+
+        #if len(axis_words) > 1:
         self.emit(" ".join(axis_words))
 
 
@@ -454,12 +466,17 @@ def h_goto(apt_keyword: str, argument_text: str, state: WriterState, iso_writer:
         z_out = new_z_value
     # N'emet la ligne de deplacement que si au moins un axe change.
     if x_out is not None or y_out is not None or z_out is not None:
-        iso_writer.linear_move(state.motion_mode, state.feedrate_value, state.feedrate_unit,
-                        position_x=x_out, position_y=y_out, position_z=z_out)
+        iso_writer.linear_move(state.tool_number, state.motion_mode, state.toolComp_mode, state.feedrate_value,
+                               state.feedrate_unit, position_x=x_out, position_y=y_out, position_z=z_out)
 
 
 
-
+def h_cutcom(apt_keyword: str, argument_text: str, state: WriterState, iso_writer: IsoWriter) -> None:
+    """Met a jour le mode de compensation d'outil et emet les lignes ISO correspondantes si necessaire."""
+    # Exemple accepte : CUTCOM/LEFT
+    cutcom_tokens = csv_tokens(argument_text)
+    cutcom_mode = ToolComp(cutcom_tokens[0])
+    state.toolComp_mode = cutcom_mode
 
 
 
@@ -606,6 +623,7 @@ DISPATCH: dict[str, Handler] = {
     # Trajectoires
     "RAPID": h_rapid,
     "GOTO": h_goto,
+    "CUTCOM": h_cutcom,
     "INDIRV": h_indirv,
     "TLON": h_tlon,
     "END": h_fini,

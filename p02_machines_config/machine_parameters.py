@@ -3,6 +3,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import TypeAlias
+from p02_machines_config.machine_enums import SpindleDirection, ToolComp
 
 
 JsonDict: TypeAlias = dict[str, object]
@@ -21,16 +22,6 @@ def normalize_gm_code(code):
     if not prefix or not number.isdigit():
         return normalized_code
     return f"{prefix}{int(number)}"
-
-
-def _normalize_spindle_direction(spindle_direction: object | None) -> str | None:
-    """Convertit un sens de broche en chaine exploitable sans dependre d'un enum externe."""
-    if spindle_direction is None:
-        return None
-    if isinstance(spindle_direction, str):
-        return spindle_direction.upper()
-    direction_value = getattr(spindle_direction, "value", spindle_direction)
-    return str(direction_value).upper()
 
 
 def _normalize_axis_vector(workplane_vector: object) -> tuple[float, float, float]:
@@ -110,21 +101,24 @@ class MachineParameters:
                 return tool_config
         return None
 
-    def get_spindle_code_for_tool(self, tool_number: int, spindle_direction: object | None = None) -> str:
-        """Retourne le code ISO de broche associe a l'outil et au sens demandes."""
+    def get_required_tool_config(self, tool_number: int) -> JsonDict:
+        """Retourne la configuration JSON de l'outil ou leve une erreur s'il est introuvable."""
         tool_config = self.get_tool_config(tool_number)
         if tool_config is None:
             raise ValueError(f"MachineConfigError: outil {tool_number} introuvable dans le canal {self.channel_name}")
+        return tool_config
 
-        normalized_direction = _normalize_spindle_direction(spindle_direction)
-        if normalized_direction == "CLW":
+    def get_spindle_code_for_tool(self, tool_number: int, spindle_direction: SpindleDirection | None = None) -> str:
+        """Retourne le code ISO de broche associe a l'outil et au sens demandes."""
+        tool_config = self.get_required_tool_config(tool_number)
+        if spindle_direction == SpindleDirection.CLW:
             spindle_code = tool_config.get("spindleclwstart")
-        elif normalized_direction == "CCLW":
+        elif spindle_direction == SpindleDirection.CCLW:
             spindle_code = tool_config.get("spindlecclwstart")
-        elif normalized_direction is None:
+        elif spindle_direction is None:
             spindle_code = tool_config.get("spindlestop")
         else:
-            raise ValueError(f"MachineConfigError: sens de broche '{normalized_direction}' non supporte")
+            raise ValueError(f"MachineConfigError: sens de broche '{spindle_direction}' non supporte")
 
         if not spindle_code:
             raise ValueError(
@@ -143,9 +137,7 @@ class MachineParameters:
     
     def get_tool_work_plane_code(self, tool_number: int) -> str:
         """Retourne le code de plan de travail associe a l'outil."""
-        tool_config = self.get_tool_config(tool_number)
-        if tool_config is None:
-            raise ValueError(f"MachineConfigError: outil {tool_number} introuvable dans le canal {self.channel_name}")
+        tool_config = self.get_required_tool_config(tool_number)
         return self.get_work_plane_code_from_vector(tool_config.get("workplane"))
 
     def get_tool_geometry_work_plane(self, tool_number: int) -> tuple[str, str]:
@@ -158,6 +150,26 @@ class MachineParameters:
         if work_plane_code == self.yz_work_plane_code:
             return "YZ", work_plane_code
         raise ValueError(f"MachineConfigError: code plan de travail '{work_plane_code}' non supporte")
+
+    def get_tool_compensation_code_for_tool(self, tool_number: int, tool_compensation: ToolComp) -> str:
+        """Retourne le code ISO de compensation outil associe a l'outil et au mode demandes."""
+        tool_config = self.get_required_tool_config(tool_number)
+        if tool_compensation == ToolComp.LEFT:
+            compensation_code = tool_config.get("toolcompleft")
+        elif tool_compensation == ToolComp.RIGHT:
+            compensation_code = tool_config.get("toolcompright")
+        elif tool_compensation == ToolComp.OFF:
+            compensation_code = tool_config.get("toolcompoff")
+        else:
+            raise ValueError(
+                f"MachineConfigError: mode de compensation outil '{tool_compensation}' non supporte"
+            )
+
+        if not compensation_code:
+            raise ValueError(
+                f"MachineConfigError: code de compensation absent pour l'outil {tool_number} dans le canal {self.channel_name}"
+            )
+        return normalize_gm_code(str(compensation_code))
 
     @classmethod
     def from_machine_config(cls, machine_config: JsonDict, *, home_x_mode: str = "machine") -> "MachineParameters":
@@ -212,8 +224,6 @@ class MachineParameters:
                 xy_work_plane_code=normalize_gm_code(machine_informations["xyworkplane"]),
                 xz_work_plane_code=normalize_gm_code(machine_informations["xzworkplane"]),
                 yz_work_plane_code=normalize_gm_code(machine_informations["yzworkplane"]),
-                compensation_left_code=normalize_gm_code(machine_informations.get("compensationleft")),
-                compensation_right_code=normalize_gm_code(machine_informations.get("compensationright")),
                 home_tool_x=home_tool_x,
                 home_tool_y=home_tool_y,
                 home_tool_z=home_tool_z,

@@ -26,7 +26,15 @@ class SpindleDirection(str, Enum):
     CLW = "CLW"
     CCLW = "CCLW"
 
+
 class ToolType(str, Enum):
     """Enum pour memoriser les types d'outil autorises."""
     TURN = "TURN"
     MILL = "MILL"
+
+
+class ToolComp(str, Enum):
+    """Enum pour memoriser les types de compensation d'outil autorises."""
+    LEFT = "LEFT"
+    RIGHT = "RIGHT"
+    OFF = "OFF"

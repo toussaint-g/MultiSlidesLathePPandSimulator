@@ -28,6 +28,27 @@ Pour tester l'application, vous pouvez utilier les fichiers presents dans le rep
 - Positionner le **repere d'usinage de la broche de reprise** selon le canal correspondant.
 - Ne pas mettre de numero d'outil dans les **TPRINT**: ils sont forces par le PP en debut de commentaire.
 
+## Mots PP pris en charge:
+- CHANNEL.
+- SPINDL.
+- FEDRAT.
+- RAPID.
+- GOTO.
+- INDIRV.
+- TLON.
+- END.
+- PART_OPE.
+- PROGRAM.
+- MACHINE.
+- CATPROCESS.
+- CATPRODUCT.
+- OP_NAME.
+- PPRINT.
+- INSERT.
+- TPRINT.
+- TDATA.
+- LOADTL.
+
 ## Parametrage des fichiers JSON:
 
 ### tool_path_config.json:
