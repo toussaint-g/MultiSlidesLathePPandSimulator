@@ -32,7 +32,7 @@ class IsoWriter:
         # out contient le programme ISO final, ligne par ligne.
         self.out: list[str] = []
         self.emission_state = EmissionState()
-        self.machine = MachineParameters.from_config(machine_config, channel_name, home_x_mode="machine")
+        self.machine = MachineParameters.from_config(machine_config, channel_name)
 
 
     def emit(self, iso_line: str) -> None:
@@ -101,10 +101,9 @@ class IsoWriter:
 
         # Si une coordonnee a change, on l'ajoute a la ligne de mouvement et on met a jour la position courante.
         if position_x is not None:
-            if self.machine.x_diameter:
-                position_x = position_x * 2
-            axis_words.append(f"X{format_float_to_iso(position_x)}")
+            x_to_emit = position_x * 2 if self.machine.x_diameter else position_x
             self.emission_state.last_x_position = position_x
+            axis_words.append(f"X{format_float_to_iso(x_to_emit)}")
         if position_y is not None:
             axis_words.append(f"Y{format_float_to_iso(position_y)}")
             self.emission_state.last_y_position = position_y
@@ -147,9 +146,8 @@ class IsoWriter:
         start_z = self.emission_state.last_z_position if self.emission_state.last_z_position is not None else self.machine.home_tool_z
 
         if position_x is not None:
-            if self.machine.x_diameter:
-                position_x = position_x * 2
-            axis_words.append(f"X{format_float_to_iso(position_x)}")
+            x_to_emit = position_x * 2 if self.machine.x_diameter else position_x
+            axis_words.append(f"X{format_float_to_iso(x_to_emit)}")
             self.emission_state.last_x_position = position_x
         if position_y is not None:
             axis_words.append(f"Y{format_float_to_iso(position_y)}")
@@ -158,10 +156,7 @@ class IsoWriter:
             axis_words.append(f"Z{format_float_to_iso(position_z)}")
             self.emission_state.last_z_position = position_z
 
-        if self.machine.x_diameter:
-            start_x_for_offset = start_x / 2
-        else:
-            start_x_for_offset = start_x
+        start_x_for_offset = start_x
 
         if work_plane == self.machine.xy_work_plane_code:
             axis_words.append(f"I{format_float_to_iso(center_x - start_x_for_offset)}")
@@ -293,10 +288,7 @@ def h_loadtl(apt_keyword: str, argument_text: str, state: WriterState, iso_write
     state.previous_tool_type = None
     # Apres un changement d'outil, on suppose que la machine revient a la
     # position de reference de l'outil pour eviter les deplacements rapides inattendus.
-    if iso_writer.machine.x_diameter:
-        state.position_x = iso_writer.machine.home_tool_x * 2
-    else:
-        state.position_x = iso_writer.machine.home_tool_x
+    state.position_x = iso_writer.machine.home_tool_x
     state.position_y = iso_writer.machine.home_tool_y
     state.position_z = iso_writer.machine.home_tool_z
 

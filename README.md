@@ -65,4 +65,4 @@ Pour le parametrage des machines d'usinage. Un nombre d'options sont parametrabl
     - **tool_type: 0** -> outil de tournage.
 	- **tool_type: 1** -> outil de fraisage.
 	- **tool_type: 2** -> outil stopper (pour ravitaillement matiere).
-- **hometool X** est toujours traite au rayon et pas au diametre, et doivent-etre places par rapport au partvector.
+- **hometool X** est toujours traite au rayon et pas au diametre, et doit-etre place par rapport au partvector.

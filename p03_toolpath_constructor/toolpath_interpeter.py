@@ -15,7 +15,7 @@ class ToolPathInterpreter:
 
     def __init__(self, machine_config: JsonDict, channel_name: str, part_thickness):
         # Initialisation des variables
-        self.machine = MachineParameters.from_config(machine_config, channel_name, home_x_mode="part")
+        self.machine = MachineParameters.from_config(machine_config, channel_name)
         self.part_thickness = part_thickness
 
     @staticmethod

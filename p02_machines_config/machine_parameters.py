@@ -172,16 +172,16 @@ class MachineParameters:
         return normalize_gm_code(str(compensation_code))
 
     @classmethod
-    def from_machine_config(cls, machine_config: JsonDict, *, home_x_mode: str = "machine") -> "MachineParameters":
+    def from_machine_config(cls, machine_config: JsonDict) -> "MachineParameters":
         """Construit les parametres a partir du premier canal disponible."""
         try:
             channel_name = next(iter(machine_config["channelslist"]))
         except StopIteration:
             raise ValueError("MachineConfigError: aucun canal n'est defini dans le fichier JSON")
-        return cls.from_config(machine_config, channel_name, home_x_mode=home_x_mode)
+        return cls.from_config(machine_config, channel_name)
 
     @classmethod
-    def from_config(machine_parameters_builder, machine_config: JsonDict, channel_name: str, *, home_x_mode: str = "machine") -> "MachineParameters":
+    def from_config(machine_parameters_builder, machine_config: JsonDict, channel_name: str) -> "MachineParameters":
         """Construit les parametres machine/canal a partir du JSON charge."""
         try:
             machine_informations: JsonDict = machine_config["machineinformations"]  # type: ignore[assignment]
@@ -190,10 +190,7 @@ class MachineParameters:
             home_tool_x, home_tool_y, home_tool_z = _extract_home_tool_coordinates(channel_config["hometool"])
             x_diameter = machine_informations["xdiameter"]
             if x_diameter:
-                if home_x_mode == "machine":
-                    home_tool_x = home_tool_x * 2
-                elif home_x_mode == "part":
-                    home_tool_x = home_tool_x / 2
+                home_tool_x = home_tool_x / 2
 
             coolant_start_code = machine_informations.get("coolantstart")
             coolant_stop_code = machine_informations.get("coolantstop")

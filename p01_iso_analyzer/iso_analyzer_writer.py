@@ -9,7 +9,7 @@ class IsoAnalyzerWriter:
     def __init__(self, machine_config: JsonDict):
         self.digit_after_point_distance = 3
         self.digit_after_point_time = 4
-        self.machine = MachineParameters.from_machine_config(machine_config, home_x_mode="machine")
+        self.machine = MachineParameters.from_machine_config(machine_config)
 
 
     def format_time(self, minutes):

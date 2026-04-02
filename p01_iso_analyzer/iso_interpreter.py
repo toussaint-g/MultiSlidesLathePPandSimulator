@@ -28,7 +28,7 @@ class IsoInterpreter:
     """Classe qui permet d'analyser et comprendre le GCode"""
 
     def __init__(self, machine_config: JsonDict, channel_name: str):
-        self.machine = MachineParameters.from_config(machine_config, channel_name, home_x_mode="machine")
+        self.machine = MachineParameters.from_config(machine_config, channel_name)
         self.work_plane_by_code = _build_work_plane_map(
             self.machine.xy_work_plane_code,
             self.machine.xz_work_plane_code,
@@ -37,10 +37,7 @@ class IsoInterpreter:
 
     def _get_home_tool_position(self) -> tuple[float, float, float]:
         """Retourne la position home tool dans le repere piece de l'analyseur."""
-        home_tool_x = self.machine.home_tool_x
-        if self.machine.x_diameter:
-            home_tool_x = home_tool_x / 2
-        return home_tool_x, self.machine.home_tool_y, self.machine.home_tool_z
+        return self.machine.home_tool_x, self.machine.home_tool_y, self.machine.home_tool_z
 
     def analyze(self, path):
         """Cette methode vient extraire les donnees utiles de chaque ligne du GCode et les stocker dans une liste d'objet"""
@@ -74,9 +71,6 @@ class IsoInterpreter:
             pattern_circular_move_cw = _build_gm_code_pattern(self.machine.circular_move_CW_code)
             pattern_circular_move_ccw = _build_gm_code_pattern(self.machine.circular_move_CCW_code)
             pattern_timer = _build_gm_code_pattern(self.machine.timer_code)
-            pattern_work_plane_xy = _build_gm_code_pattern(self.machine.xy_work_plane_code)
-            pattern_work_plane_xz = _build_gm_code_pattern(self.machine.xz_work_plane_code)
-            pattern_work_plane_yz = _build_gm_code_pattern(self.machine.yz_work_plane_code)
 
             # Lecture du fichier ligne par ligne
             for line in gcode_file:
@@ -99,9 +93,6 @@ class IsoInterpreter:
                 match_move_cw = pattern_circular_move_cw.search(line)
                 match_move_ccw = pattern_circular_move_ccw.search(line)
                 match_timer = pattern_timer.search(line)
-                match_work_plane_xy = pattern_work_plane_xy.search(line)
-                match_work_plane_xz = pattern_work_plane_xz.search(line)
-                match_work_plane_yz = pattern_work_plane_yz.search(line)
 
                 # Recuperation des coordonnees de position et du rayon
                 if match_x and not match_timer:
@@ -136,16 +127,12 @@ class IsoInterpreter:
                     radius = obj_modal.radius
 
                 # Calcul du rayon pour les mouvements circulaires et determination du plan de travail
-                # work_plane = obj_modal.work_plane
                 if match_i and match_j:
                     radius = math.sqrt((float(match_i.group(1))) ** 2 + (float(match_j.group(1))) ** 2)
-                    #work_plane = self.work_plane_by_code[self.machine.xy_work_plane_code]
                 elif match_i and match_k:
                     radius = math.sqrt((float(match_i.group(1))) ** 2 + (float(match_k.group(1))) ** 2)
-                    #work_plane = self.work_plane_by_code[self.machine.xz_work_plane_code]
                 elif match_j and match_k:
                     radius = math.sqrt((float(match_j.group(1))) ** 2 + (float(match_k.group(1))) ** 2)
-                    #work_plane = self.work_plane_by_code[self.machine.yz_work_plane_code]
                 
                 # Recuperation de l'avance, de l'outil et du correcteur d'outil
                 if match_feedrate:
@@ -219,14 +206,6 @@ class IsoInterpreter:
                         move_type = MoveType.CIRCULAR_MOVE_CW
                     else:
                         move_type = MoveType.CIRCULAR_MOVE_CCW
-
-                # Recuperation du plan de travail si explicitement indique sur la ligne, sinon on prend le plan de travail de l'outil
-                # if match_work_plane_xy:
-                #     work_plane = self.work_plane_by_code[self.machine.xy_work_plane_code]
-                # elif match_work_plane_xz:
-                #     work_plane = self.work_plane_by_code[self.machine.xz_work_plane_code]
-                # elif match_work_plane_yz:
-                #     work_plane = self.work_plane_by_code[self.machine.yz_work_plane_code]
 
                 # Recuperation des differents temps
                 # Calcul du temps de mouvement et du temps productif
@@ -372,14 +351,10 @@ class Modal:
         self.feedrate = self.machine.rapidfeedrate
         self.gcode_group01 = self.machine.rapid_move_code
 
-        home_tool_x = self.machine.home_tool_x
-        if self.machine.x_diameter:
-            home_tool_x = home_tool_x / 2
-
         self.tool = 0
         self.tool_offset = 0
         self.radius = 0.0
-        self.position_x = home_tool_x
+        self.position_x = self.machine.home_tool_x
         self.position_y = self.machine.home_tool_y
         self.position_z = self.machine.home_tool_z
         self.position_c = 0.0
