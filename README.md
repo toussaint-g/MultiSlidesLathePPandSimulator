@@ -65,5 +65,5 @@ Pour le parametrage des machines d'usinage. Un nombre d'options sont parametrabl
 - **spindlelinked**: numero de broche machine associee a l'outil.
 - **tooltype**: 
     - **tool_type: "TURN"** -> outil de tournage.
-	- **tool_type: "MILL"** -> outil de fraisage.
+	- **tool_type: "MILL"** -> outil de fraisage (fixe ou tournant).
 - **hometool X** doit-etre renseigne au rayon et doit-etre place par rapport au ipartvector.
