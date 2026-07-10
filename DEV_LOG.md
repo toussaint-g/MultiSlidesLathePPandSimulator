@@ -1,17 +1,17 @@
 # Suivi de developpement
 ## Auteur:
 **Toussaint Guillaume**
-## Le 12/06/2026
+## Le 10/07/2026
 
 ## Partie PP:
 ### Prochaines actions:
 - Gestion des synchronisations des canaux.
-- Regenerer le fichier linear_3x_PATH1.aptsource depuis CATIA.
 - Finaliser la partie caxis_move du writer et l'appel depuis le handler.
-- Faire json les titres et les definitions plus explicites pour les parametres de json machine.
+- Faire json avec titres et les definitions plus explicites pour les parametres de json machine.
 - Remettre tous les fichiers debug, html, etc... dans le dossier roaming (comme app HE ARC). Les autres??
 - Dans le json machine: voir pour les outils de fraisage fixe (T13/14/15 -> X3, T31/36/37 > x2). Quel traitement dans CATIA??
-- Erreur sur la verif des outils de fraisage entre outil axial et transversal.
+- Erreur sur la verif des outils de fraisage entre outil axial et transversal. A ceuser.
+- Traiter tous les TODO.
 ### Actions futures:
 - Separer toutes les briques (generateur, analyseur, simulateur)??
 - Creer un HTML pour la generation des gammes avec vue des trajectoires en 3D, etc...

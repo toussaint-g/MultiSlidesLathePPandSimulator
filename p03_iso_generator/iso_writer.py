@@ -290,7 +290,8 @@ class IsoWriter:
         """Gere les mouvements lineaires en emettant le code de mouvement approprie et les coordonnees qui ont change."""
 
         # Si une position en axe C est fournie, on emet le code de mouvement en axe C avant les autres axes pour eviter les collisions.
-        if position_c is not None:
+        # TODO: positionnement en C force si en fraisage. Voir pour mettre plus d'inteligence la-dedans.
+        if position_c is not None and self.machine.get_tool_type(tool_number) == ToolType.MILL:
             # Si une rotation en axe C est demandee, on emet le code de desactivation et reactivation du frein de broche.
             spindle_number = self._get_emitted_spindle_number()
             self.emit(self.machine.get_code_for_spindle_brake(spindle_number, False))
