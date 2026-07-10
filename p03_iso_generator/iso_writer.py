@@ -59,9 +59,13 @@ class IsoWriter:
         self.emit(f"{self.machine.program_prefix}{self.machine.channel_name}000")
 
 
-    def footer(self, tool_number: int, spindle_number: Optional[int] = None) -> None:
+    def footer(self, tool_number: int, position_x: float, spindle_number: Optional[int] = None) -> None:
         """Ajoute le pied de page minimal pour un programme de fraisage."""
         self.emit(self.machine.get_spindle_code(tool_number, spindle_number))
+        self.emit(self.machine.get_code_for_spindle_brake(spindle_number, False))
+        self.emit(self.machine.get_code_for_spindle_c_axis(spindle_number, False))
+        self._emit_tool_clearance(position_x)
+        self.emit(f"{self.machine.partcounter_code}") if self.machine.channel_name == "1" else None
         self.emit(f"{self.machine.endprogram_code}")
         self.emit(f"{self.machine.startandendfile_character}")
 
@@ -76,7 +80,7 @@ class IsoWriter:
         self.emit(f"(CANAL {channel_number})")
 
     # TODO: rotation_unit non utilisee. A implementer??
-    def apply_tool_update(self, tool: ToolSelection, spindle: SpindleSelection,
+    def apply_tool_update(self, work_plane: str, tool: ToolSelection, spindle: SpindleSelection,
                           position_x: float, position_c: float,
                           tool_change_processing: bool) -> ToolUpdateResult:
         """Emet les lignes ISO necessaires pour appliquer l'etat outil/broche courant."""
@@ -119,6 +123,8 @@ class IsoWriter:
             self._emit_previous_stop_for_transition(transition)
             # Emission du changement outil et des codes de transition specifiques au type de transition.
             self._emit_tool_change(tool)
+            # Emission du plan de travail juste apres l'appel outil.
+            self._emit_work_plane_if_changed(work_plane)
             # Emission des codes de transition specifiques au type de transition et determination si une rotation a ete emise.
             rotation_emitted = self._emit_tool_transition(transition, result)
 
@@ -139,7 +145,7 @@ class IsoWriter:
         axis_words = [self.machine.rapid_move_code, f"{self.machine.toolname_prefix}0"]
         x_to_emit = position_x * 2 if self.machine.x_diameter else position_x
         axis_words.append(f"X{format_float_to_iso(x_to_emit)}")
-        self.emit(f"{' '.join(axis_words)} (DEGAGEMENT OUTIL)")
+        self.emit(f"{' '.join(axis_words)}")
         self.emission_state.last_x_position = position_x
 
 
@@ -147,6 +153,13 @@ class IsoWriter:
         """Emet le commentaire et le bloc de changement outil."""
         self.emit(f"({self.machine.toolname_prefix}{tool.number:02d}{tool.number:02d} - {tool.comment})")
         self.emit(f"{self.machine.toolname_prefix}{tool.number:02d}{tool.number:02d}")
+
+
+    def _emit_work_plane_if_changed(self, work_plane: str) -> None:
+        """Emet le plan de travail si necessaire."""
+        if self.emission_state.last_work_plane_code != work_plane:
+            self.emit(f"{work_plane}")
+            self.emission_state.last_work_plane_code = work_plane
 
 
     def _emit_previous_stop_for_transition(self, transition: ToolTransition) -> None:
@@ -211,6 +224,7 @@ class IsoWriter:
 
     def _emit_turn_activation(self, spindle: SpindleSelection, result: ToolUpdateResult) -> None:
         """Active une broche de tournage."""
+        self.emit(self.machine.get_code_for_spindle_brake(spindle.number, False))
         self.emit(self.machine.get_code_for_spindle_c_axis(spindle.number, False))
         self._emit_rotation_for_turn(spindle)
         self.emission_state.last_y_position = 0.0
@@ -222,6 +236,7 @@ class IsoWriter:
         self._emit_rotation_for_mill(tool, spindle)
         self.emit(self.machine.get_code_for_spindle_c_axis(spindle.number, True))
         self.emit(self.machine.get_code_for_spindle_brake(spindle.number, False))
+        self.emit(self.machine.get_code_for_c_axis_reference_position(spindle.number))
         self.emit(f"{self.machine.rapid_move_code} C{format_float_to_iso(0.0)}")
         self.emission_state.last_c_position = 0.0
         result.position_c = 0.0
@@ -239,13 +254,13 @@ class IsoWriter:
     def _emit_rotation_for_turn(self, spindle: SpindleSelection) -> None:
         """Emet la rotation de broche pour le tournage."""
         rotation_code = self.machine.get_code_for_turn_spindle(spindle.number, spindle.rotation_direction)
-        self.emit(f"{rotation_code} {self.machine.spindle_speed_prefix}{format_float_to_iso(spindle.rotation_speed)}")
+        self.emit(f"{rotation_code} {self.machine.spindle_speed_prefix}{format_float_to_iso(spindle.rotation_speed, int_traitement=False)}")
 
 
     def _emit_rotation_for_mill(self, tool: ToolSelection, spindle: SpindleSelection) -> None:
         """Emet la rotation de l'outil tournant pour le fraisage."""
         rotation_code = self.machine.get_code_for_tool_rotation(tool.number, spindle.rotation_direction)
-        self.emit(f"{rotation_code} {self.machine.spindle_speed_prefix}{format_float_to_iso(spindle.rotation_speed)}")
+        self.emit(f"{rotation_code} {self.machine.spindle_speed_prefix}{format_float_to_iso(spindle.rotation_speed, int_traitement=False)}")
 
 
     def _store_tool_update(self, tool: ToolSelection, spindle: SpindleSelection) -> None:
@@ -315,7 +330,7 @@ class IsoWriter:
 
         # Si l'avance a change, on l'ajoute a la ligne de mouvement.
         if self.emission_state.last_feedrate_value != feedrate_value:
-            axis_words.append(f"F{format_float_to_iso(feedrate_value)}")
+            axis_words.append(f"F{format_float_to_iso(feedrate_value, int_traitement=False)}")
             self.emission_state.last_feedrate_value = feedrate_value
 
         # Si au moins une information a changee, on emet la ligne de mouvement.
@@ -341,19 +356,17 @@ class IsoWriter:
                       center_x: float, center_y: float, center_z: float,
                       position_x=None, position_y=None, position_z=None) -> None:
         """Gere les mouvements circulaires en emettant le plan, le code et les offsets de centre."""
+        
         axis_words = []
-
-        if self.emission_state.last_work_plane_code != work_plane:
-            axis_words.append(work_plane)
-            self.emission_state.last_work_plane_code = work_plane
-
         axis_words.append(motion_code)
 
+        # Recuperation des positions de depart pour calculer les offsets de centre.
         initial_tool_change_x, initial_tool_change_y, initial_tool_change_z = self.machine.get_initial_tool_change_point()
         start_x = self.emission_state.last_x_position if self.emission_state.last_x_position is not None else initial_tool_change_x
         start_y = self.emission_state.last_y_position if self.emission_state.last_y_position is not None else initial_tool_change_y
         start_z = self.emission_state.last_z_position if self.emission_state.last_z_position is not None else initial_tool_change_z
 
+        # Si une coordonnee a change, on l'ajoute a la ligne de mouvement et on met a jour la position courante.
         if position_x is not None:
             x_to_emit = position_x * 2 if self.machine.x_diameter else position_x
             axis_words.append(f"X{format_float_to_iso(x_to_emit)}")
@@ -365,8 +378,8 @@ class IsoWriter:
             axis_words.append(f"Z{format_float_to_iso(position_z)}")
             self.emission_state.last_z_position = position_z
 
+        # Calcul des offsets de centre en fonction du plan de travail et emission des offsets.
         start_x_for_offset = start_x
-
         if work_plane == self.machine.xy_work_plane_code:
             axis_words.append(f"I{format_float_to_iso(center_x - start_x_for_offset)}")
             axis_words.append(f"J{format_float_to_iso(center_y - start_y)}")
@@ -377,6 +390,7 @@ class IsoWriter:
             axis_words.append(f"J{format_float_to_iso(center_y - start_y)}")
             axis_words.append(f"K{format_float_to_iso(center_z - start_z)}")
 
+        # Si l'unite d'avance a change, on l'ajoute a la ligne de mouvement.
         if self.emission_state.last_feedrate_unit != feedrate_unit:
             if feedrate_unit == FeedrateUnit.MMPM:
                 axis_words.append(f"{self.machine.feedrate_per_minute}")
@@ -385,7 +399,7 @@ class IsoWriter:
                 axis_words.append(f"{self.machine.feedrate_per_revolution}")
                 self.emission_state.last_feedrate_unit = FeedrateUnit.MMPR
         if self.emission_state.last_feedrate_value != feedrate_value:
-            axis_words.append(f"F{format_float_to_iso(feedrate_value)}")
+            axis_words.append(f"F{format_float_to_iso(feedrate_value, int_traitement=False)}")
             self.emission_state.last_feedrate_value = feedrate_value
 
         self.emit(" ".join(axis_words))

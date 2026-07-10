@@ -287,6 +287,6 @@ def emit_helical_move(solution: HelicalMoveSolution, state: WriterState, iso_wri
         solution.center_y,
         solution.center_z,
         position_x=solution.end_x,
-        position_y=solution.end_y if solution.work_plane_name != "XZ" else None,
-        position_z=solution.end_z if emit_z else None,
+        position_y=solution.end_y,
+        position_z=solution.end_z,
     )

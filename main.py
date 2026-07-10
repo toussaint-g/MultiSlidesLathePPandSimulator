@@ -102,7 +102,7 @@ def apt_treatment(path_apt_file, path_export_file, machine_name, channel_name):
 
 
     # TODO: a enlever???
-    os.startfile(debug_path)
+    os.startfile(nc_path)
 
 
 

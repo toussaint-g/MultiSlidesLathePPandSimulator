@@ -401,6 +401,8 @@ def emit_tlon_arc(solution: TlonArcSolution, state: WriterState, iso_writer: Iso
     state.position_z = solution.end_z
     state.motion_mode = MotionMode.WORKING
 
+
+# TODO: voir pour position XYZ car "if solution.work_plane_name != "XY" else None" place sur ces points. Interet?
     iso_writer.circular_move(
         solution.work_plane_code,
         solution.motion_code,
@@ -410,6 +412,6 @@ def emit_tlon_arc(solution: TlonArcSolution, state: WriterState, iso_writer: Iso
         solution.center_y,
         solution.center_z,
         position_x=solution.end_x,
-        position_y=solution.end_y if solution.work_plane_name != "XZ" else None,
-        position_z=solution.end_z if solution.work_plane_name != "XY" else None,
+        position_y=solution.end_y,
+        position_z=solution.end_z,
     )

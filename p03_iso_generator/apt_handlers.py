@@ -224,13 +224,15 @@ def h_spindle(apt_keyword: str, argument_text: str, state: WriterState, iso_writ
     state.spindle.rotation_direction = rotation_direction
 
     # SPINDL finalise l'etat outil/broche et declenche l'emission ISO.
+    _, work_plane_code = iso_writer.machine.get_tool_geometry_work_plane(state.tool.number)
     tool_update = iso_writer.apply_tool_update(
+        work_plane_code,
         ToolSelection.from_writer_state(state),
         SpindleSelection.from_writer_state(state),
         state.position_x,
         state.position_c,
         state.tool_change_processing,
-            )
+    )
 
     if tool_update.position_c is not None:
         state.position_c = tool_update.position_c
@@ -438,7 +440,8 @@ def h_rotabl(apt_keyword: str, argument_text: str, state: WriterState, iso_write
 
 def h_fini(apt_keyword: str, argument_text: str, state: WriterState, iso_writer: IsoWriter) -> None:
     """Termine le programme ISO."""
-    iso_writer.footer(state.tool.number, state.spindle.number)
+    state.position_x = iso_writer.machine.get_tool_change_point_x_for_t0()
+    iso_writer.footer(state.tool.number, state.position_x, state.spindle.number)
 
 
 def h_default(apt_keyword: str, argument_text: str, state: WriterState, iso_writer: IsoWriter) -> None:

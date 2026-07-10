@@ -134,6 +134,7 @@ class MachineParameters:
     startandendfile_character: str
     block_prefix: str
     block_increment: int
+    partcounter_code: str
     xy_work_plane_code: str
     xz_work_plane_code: str
     yz_work_plane_code: str
@@ -172,6 +173,17 @@ class MachineParameters:
             raise ValueError(error_message(
                 ErrorCategory.MACHINE_CONFIG,
                 f"code {code_key} absent pour la broche {spindle_number}",
+            ))
+        return normalize_gm_code(str(spindle_code))
+    
+    def get_code_for_c_axis_reference_position(self, spindle_number: int) -> str:
+        """Retourne le code ISO de position de reference axe C pour une broche machine."""
+        spindle_config = self.get_required_spindle_config(spindle_number)
+        spindle_code = spindle_config.get("caxisreferenceposition")
+        if not spindle_code:
+            raise ValueError(error_message(
+                ErrorCategory.MACHINE_CONFIG,
+                f"code caxisreferenceposition absent pour la broche {spindle_number}",
             ))
         return normalize_gm_code(str(spindle_code))
 
@@ -366,6 +378,7 @@ class MachineParameters:
                 startandendfile_character=machine_informations["startandendfilecharacter"],
                 block_prefix=machine_informations["blockprefix"],
                 block_increment=machine_informations["blockincrement"],
+                partcounter_code=normalize_gm_code(machine_informations["partcounter"]),
                 xy_work_plane_code=normalize_gm_code(machine_informations["xyworkplane"]),
                 xz_work_plane_code=normalize_gm_code(machine_informations["xzworkplane"]),
                 yz_work_plane_code=normalize_gm_code(machine_informations["yzworkplane"]),
