@@ -8,6 +8,7 @@ import math
 from app_errors import unmanaged_diagnostic
 from p03_iso_generator.apt_parser import csv_tokens
 from p03_iso_generator.geometric_calculations import (
+    build_point_from_plane as geometry_build_point_from_plane,
     ccw_tangent_vector as geometry_ccw_tangent_vector,
     cw_tangent_vector as geometry_cw_tangent_vector,
     project_point_to_plane as geometry_project_point_to_plane,
@@ -42,19 +43,25 @@ class HelicalMoveDefinition:
 
 
 @dataclass
+class HelicalMoveSegment:
+    """Segment ISO elementaire d'un HELICAL CATIA."""
+
+    end_x: float
+    end_y: float
+    end_z: float
+
+
+@dataclass
 class HelicalMoveSolution:
     """Resultat geometrique d'un HELICAL pret a etre emis en ISO."""
 
     work_plane_name: str
     work_plane_code: str
     motion_code: str
-    start_z: float
     center_x: float
     center_y: float
     center_z: float
-    end_x: float
-    end_y: float
-    end_z: float
+    segments: list[HelicalMoveSegment]
 
 
 def emit_helical_not_supported(argument_text: str, iso_writer: IsoWriter, reason: str | None = None) -> None:
@@ -119,6 +126,86 @@ def _transform_helical_definition_to_current_c(definition: HelicalMoveDefinition
     )
 
 
+def _constant_coordinate_from_plane(work_plane: str, point_x: float, point_y: float, point_z: float) -> float:
+    """Retourne la coordonnee hors plan d'un point 3D."""
+    if work_plane == "XY":
+        return point_z
+    if work_plane == "XZ":
+        return point_y
+    return point_x
+
+
+def _rotation_sign_for_motion(work_plane: str, motion_code: str, iso_writer: IsoWriter) -> float:
+    """Retourne le signe de rotation 2D correspondant au code ISO dans le plan courant."""
+    if work_plane == "XZ":
+        return 1.0 if motion_code == iso_writer.machine.circular_move_CW_code else -1.0
+    return -1.0 if motion_code == iso_writer.machine.circular_move_CW_code else 1.0
+
+
+def _build_helical_segments(
+    definition: HelicalMoveDefinition,
+    work_plane: str,
+    motion_code: str,
+    start_x: float,
+    start_y: float,
+    start_z: float,
+    center_u: float,
+    center_v: float,
+    radial_u: float,
+    radial_v: float,
+    tolerance: float,
+    iso_writer: IsoWriter,
+) -> list[HelicalMoveSegment]:
+    """Decoupe une helice CATIA en arcs ISO de 360 deg maximum."""
+    total_angle = abs(definition.angle)
+    full_turn_count = int(total_angle // 360.0)
+    remaining_angle = total_angle - full_turn_count * 360.0
+    if remaining_angle <= tolerance:
+        remaining_angle = 0.0
+
+    signed_rotation = _rotation_sign_for_motion(work_plane, motion_code, iso_writer)
+    start_constant = _constant_coordinate_from_plane(work_plane, start_x, start_y, start_z)
+    end_constant = _constant_coordinate_from_plane(work_plane, definition.end_x, definition.end_y, definition.end_z)
+    segments: list[HelicalMoveSegment] = []
+
+    angle_done = 0.0
+    for _ in range(full_turn_count):
+        angle_done += 360.0
+        progress = angle_done / total_angle
+        constant_value = start_constant + (end_constant - start_constant) * progress
+        end_x, end_y, end_z = geometry_build_point_from_plane(
+            work_plane,
+            center_u + radial_u,
+            center_v + radial_v,
+            constant_value,
+        )
+        segments.append(HelicalMoveSegment(end_x=end_x, end_y=end_y, end_z=end_z))
+
+    if remaining_angle > 0.0:
+        angle_done += remaining_angle
+        angle_radians = math.radians(remaining_angle * signed_rotation)
+        rotated_u = radial_u * math.cos(angle_radians) - radial_v * math.sin(angle_radians)
+        rotated_v = radial_u * math.sin(angle_radians) + radial_v * math.cos(angle_radians)
+        progress = angle_done / total_angle
+        constant_value = start_constant + (end_constant - start_constant) * progress
+        end_x, end_y, end_z = geometry_build_point_from_plane(
+            work_plane,
+            center_u + rotated_u,
+            center_v + rotated_v,
+            constant_value,
+        )
+        segments.append(HelicalMoveSegment(end_x=end_x, end_y=end_y, end_z=end_z))
+
+    if segments:
+        segments[-1] = HelicalMoveSegment(
+            end_x=definition.end_x,
+            end_y=definition.end_y,
+            end_z=definition.end_z,
+        )
+
+    return segments
+
+
 def parse_helical_definition(argument_text: str) -> HelicalMoveDefinition | None:
     """Parse HELICAL/CENTER,...,END,... et retourne une definition normalisee."""
     # Definition CATIA V5 prise en charge ici :
@@ -180,8 +267,8 @@ def solve_helical_definition(definition: HelicalMoveDefinition, state: WriterSta
         return None
 
     tolerance = float(iso_writer.machine.calculation_tolerance)
-    if abs(definition.round_count) > 1.0 + tolerance or abs(definition.angle) > 360.0 + tolerance:
-        emit_helical_not_supported(definition.raw_argument_text, iso_writer, "plus d'un tour non supporte")
+    if abs(definition.angle) <= tolerance:
+        emit_helical_not_supported(definition.raw_argument_text, iso_writer, "angle HELICAL nul")
         return None
 
     transformed_definition = _transform_helical_definition_to_current_c(definition, state.position_c)
@@ -253,40 +340,53 @@ def solve_helical_definition(definition: HelicalMoveDefinition, state: WriterSta
     cw_alignment = cw_tangent_u * tangent_u + cw_tangent_v * tangent_v
     ccw_alignment = ccw_tangent_u * tangent_u + ccw_tangent_v * tangent_v
     motion_code = iso_writer.machine.circular_move_CW_code if cw_alignment >= ccw_alignment else iso_writer.machine.circular_move_CCW_code
+    segments = _build_helical_segments(
+        transformed_definition,
+        work_plane,
+        motion_code,
+        state.position_x,
+        state.position_y,
+        state.position_z,
+        center_u,
+        center_v,
+        radial_u,
+        radial_v,
+        tolerance,
+        iso_writer,
+    )
+    if not segments:
+        emit_helical_not_supported(definition.raw_argument_text, iso_writer, "segments HELICAL absents")
+        return None
 
     return HelicalMoveSolution(
         work_plane_name=work_plane,
         work_plane_code=work_plane_code,
         motion_code=motion_code,
-        start_z=state.position_z,
         center_x=transformed_definition.center_x,
         center_y=transformed_definition.center_y,
         center_z=transformed_definition.center_z,
-        end_x=transformed_definition.end_x,
-        end_y=transformed_definition.end_y,
-        end_z=transformed_definition.end_z,
+        segments=segments,
     )
 
 
 def emit_helical_move(solution: HelicalMoveSolution, state: WriterState, iso_writer: IsoWriter) -> None:
     """Emet un HELICAL sous forme d'arc ISO avec deplacement simultane sur l'axe hors plan."""
-    tolerance = float(iso_writer.machine.calculation_tolerance)
-    emit_z = solution.work_plane_name != "XY" and abs(solution.end_z - solution.start_z) > tolerance
-
-    state.position_x = solution.end_x
-    state.position_y = solution.end_y
-    state.position_z = solution.end_z
     state.motion_mode = MotionMode.WORKING
 
-    iso_writer.circular_move(
-        solution.work_plane_code,
-        solution.motion_code,
-        state.feedrate_value,
-        state.feedrate_unit,
-        solution.center_x,
-        solution.center_y,
-        solution.center_z,
-        position_x=solution.end_x,
-        position_y=solution.end_y,
-        position_z=solution.end_z,
-    )
+    for segment in solution.segments:
+        state.position_x = segment.end_x
+        state.position_y = segment.end_y
+        state.position_z = segment.end_z
+
+        iso_writer.circular_move(
+            solution.work_plane_code,
+            solution.motion_code,
+            state.feedrate_value,
+            state.feedrate_unit,
+            solution.center_x,
+            solution.center_y,
+            solution.center_z,
+            position_x=segment.end_x,
+            position_y=segment.end_y,
+            position_z=segment.end_z,
+        )
