@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Optional
 
 from app_errors import ErrorCategory, error_message
@@ -18,13 +17,6 @@ from p03_iso_generator.machine_state import (
     TransitionKind,
     get_machining_profile,
 )
-
-
-@dataclass
-class ToolUpdateResult:
-    """Positions logiques forcees par une emission de changement outil."""
-    position_y: float | None = None
-    position_c: float | None = None
 
 
 class IsoWriter:
@@ -81,8 +73,8 @@ class IsoWriter:
 
     # TODO: rotation_unit non utilisee. A implementer??
     def apply_tool_update(self, work_plane: str, tool: ToolSelection, spindle: SpindleSelection,
-                          position_x: float, position_c: float,
-                          tool_change_processing: bool) -> ToolUpdateResult:
+                          position_x: float, position_y: float, position_z: float, position_c: float,
+                          tool_change_processing: bool) -> None:
         """Emet les lignes ISO necessaires pour appliquer l'etat outil/broche courant."""
 
         # Controle minimal avant de choisir le profil MILL/TURN.
@@ -109,8 +101,6 @@ class IsoWriter:
         # Validation de la transition pour s'assurer que les changements
         # d'outil/broche sont coherents avec l'etat courant declare et le profil de fraisage/tournage.
         transition.validate()
-        # Determination des lignes a emettre pour la transition outil/broche et emission de ces lignes.
-        result = ToolUpdateResult()
         # Indicateur pour savoir si une rotation a deja ete emise par les codes de
         # transition pour eviter les emissions redondantes de rotation.
         rotation_emitted = False
@@ -126,7 +116,7 @@ class IsoWriter:
             # Emission du plan de travail juste apres l'appel outil.
             self._emit_work_plane_if_changed(work_plane)
             # Emission des codes de transition specifiques au type de transition et determination si une rotation a ete emise.
-            rotation_emitted = self._emit_tool_transition(transition, result)
+            rotation_emitted = self._emit_tool_transition(transition)
 
         # Si une rotation doit etre emise et n'a pas encore ete emise par les codes de transition, on l'emet.
         if transition.is_rotation_change and not rotation_emitted:
@@ -135,9 +125,6 @@ class IsoWriter:
 
         # Memorisation du nouvel etat outil/broche apres emission.
         self._store_tool_update(tool, spindle)
-        # Retour des positions logiques forcees par l'emission de changement outil/broche
-        # pour que le post-processeur puisse les prendre en compte dans son etat courant declare.
-        return result
 
 
     def _emit_tool_clearance(self, position_x: float) -> None:
@@ -153,6 +140,8 @@ class IsoWriter:
         """Emet le commentaire et le bloc de changement outil."""
         self.emit(f"({self.machine.toolname_prefix}{tool.number:02d}{tool.number:02d} - {tool.comment})")
         self.emit(f"{self.machine.toolname_prefix}{tool.number:02d}{tool.number:02d}")
+        self.emit(f"{self.machine.rapid_move_code} Y{format_float_to_iso(0.0)}")
+        self.emission_state.last_y_position = 0.0
 
 
     def _emit_work_plane_if_changed(self, work_plane: str) -> None:
@@ -185,7 +174,7 @@ class IsoWriter:
             self.spindle_stop(previous_tool_number, previous_spindle_number)
 
 
-    def _emit_tool_transition(self, transition: ToolTransition, result: ToolUpdateResult) -> bool:
+    def _emit_tool_transition(self, transition: ToolTransition) -> bool:
         """Emet les codes specifiques au type de transition et retourne True si la rotation est emise."""
         transition_kind = transition.kind()
         tool = transition.current_tool
@@ -193,12 +182,12 @@ class IsoWriter:
 
         # Activation broche tournage apres premier outil TURN ou sortie du fraisage.
         if transition_kind in (TransitionKind.FIRST_TURN, TransitionKind.MILL_TO_TURN):
-            self._emit_turn_activation(spindle, result)
+            self._emit_turn_activation(spindle)
             return True
 
         # Activation outil tournant de fraisage apres premier outil MILL, sortie du tournage ou changement d'outil de fraisage.
         if transition_kind in (TransitionKind.FIRST_MILL, TransitionKind.TURN_TO_MILL, TransitionKind.MILL_TO_MILL):
-            self._emit_mill_activation(tool, spindle, result)
+            self._emit_mill_activation(tool, spindle)
             return True
 
         # En TURN -> TURN, seule la broche ou la rotation peut necessiter une emission.
@@ -211,35 +200,33 @@ class IsoWriter:
                 self._emit_rotation(tool, spindle)
                 return True
             return False
-
-        # En MILL -> MILL, un nouvel outil doit etre demarre.
-        if transition_kind == TransitionKind.MILL_TO_MILL:
-            if transition.is_tool_number_change:
-                self._emit_rotation(tool, spindle)
-                return True
-            return False
-
         return False
 
 
-    def _emit_turn_activation(self, spindle: SpindleSelection, result: ToolUpdateResult) -> None:
+    # TODO: gestion de l'axe C a reprendre car repassage par C0 dans tous les cas pas  forcement juste.
+
+    def _emit_turn_activation(self, spindle: SpindleSelection) -> None:
         """Active une broche de tournage."""
+        self._emit_caxis_reset(spindle)
         self.emit(self.machine.get_code_for_spindle_brake(spindle.number, False))
         self.emit(self.machine.get_code_for_spindle_c_axis(spindle.number, False))
         self._emit_rotation_for_turn(spindle)
         self.emission_state.last_y_position = 0.0
-        result.position_y = 0.0
 
 
-    def _emit_mill_activation(self, tool: ToolSelection, spindle: SpindleSelection, result: ToolUpdateResult) -> None:
+    def _emit_mill_activation(self, tool: ToolSelection, spindle: SpindleSelection) -> None:
         """Active un outil tournant de fraisage et initialise l'axe C."""
         self._emit_rotation_for_mill(tool, spindle)
+        self._emit_caxis_reset(spindle)
+        
+    
+    def _emit_caxis_reset(self, spindle: SpindleSelection) -> None:
+        """Remet l'axe C a sa position de reference."""
         self.emit(self.machine.get_code_for_spindle_c_axis(spindle.number, True))
         self.emit(self.machine.get_code_for_spindle_brake(spindle.number, False))
         self.emit(self.machine.get_code_for_c_axis_reference_position(spindle.number))
         self.emit(f"{self.machine.rapid_move_code} C{format_float_to_iso(0.0)}")
         self.emission_state.last_c_position = 0.0
-        result.position_c = 0.0
         self.emit(self.machine.get_code_for_spindle_brake(spindle.number, True))
 
 
@@ -336,21 +323,6 @@ class IsoWriter:
 
         # Si au moins une information a changee, on emet la ligne de mouvement.
         self.emit(" ".join(axis_words))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     def circular_move(self, work_plane: str, motion_code: str, feedrate_value: float, feedrate_unit: Optional[FeedrateUnit],

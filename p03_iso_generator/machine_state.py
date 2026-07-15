@@ -313,10 +313,10 @@ class WriterState:
     # Coolant
     coolant_on: bool = False
     # Position
-    position_x: float = 0.0
-    position_y: float = 0.0
-    position_z: float = 0.0
-    position_c: float = 0.0
+    position_x: float = None
+    position_y: float = None
+    position_z: float = None
+    position_c: float = None
     # Indirv
     indirv_x: Optional[float] = None
     indirv_y: Optional[float] = None

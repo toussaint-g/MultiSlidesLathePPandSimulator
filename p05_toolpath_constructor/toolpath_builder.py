@@ -61,13 +61,13 @@ class ToolPathBuilder:
 
         lines_vtk.InsertNextCell(polyline)
 
-    def build_circle_points(self, start_point, end_point, radius, resolution_cercle, direction_cw, work_plane):
+    def build_circle_points(self, start_point, end_point, center_point, resolution_cercle, direction_cw, work_plane):
         """Retourne les points 3D necessaires pour representer un cercle dans un plan donne."""
 
         # Le viewer trajectoire travaille en XYZ : ignorer une eventuelle 4e composante (axe C).
         np_start_point = np.array(start_point[:3], dtype=float)
         np_end_point = np.array(end_point[:3], dtype=float)
-        radius = abs(float(radius))
+        np_center_point = np.array(center_point[:3], dtype=float)
 
         # Base du plan de projection.
         u, v, n = self._build_plane_basis(work_plane)
@@ -75,54 +75,36 @@ class ToolPathBuilder:
         # Coordonnees 2D dans le plan.
         s2 = np.array([np.dot(np_start_point, u), np.dot(np_start_point, v)])
         e2 = np.array([np.dot(np_end_point, u), np.dot(np_end_point, v)])
+        center = np.array([np.dot(np_center_point, u), np.dot(np_center_point, v)])
 
         # Composante selon la normale (utile pour un deplacement helicoidal).
         sn = np.dot(np_start_point, n)
         en = np.dot(np_end_point, n)
 
-        # Calcul de la corde dans le plan.
-        corde = e2 - s2
-        lg_corde = np.linalg.norm(corde)
-        if lg_corde == 0:
+        radius = np.linalg.norm(s2 - center)
+        if radius == 0:
             raise ValueError(error_message(
                 ErrorCategory.GEOMETRY,
-                "les points de depart et d'arrivee sont identiques",
+                "centre d'arc identique au point de depart",
             ))
-        if lg_corde > 2 * radius:
-            raise ValueError(error_message(
-                ErrorCategory.GEOMETRY,
-                "le rayon est trop petit pour connecter les deux points",
-            ))
-
-        midpoint = (s2 + e2) / 2
-        h = np.sqrt(radius**2 - (lg_corde / 2) ** 2)
-
-        # Le centre du cercle se trouve sur la mediatrice de la corde.
-        corde_dir = corde / lg_corde
-        perp = np.array([-corde_dir[1], corde_dir[0]])
-        center1 = midpoint + h * perp
-        center2 = midpoint - h * perp
 
         def angle_from(center, point):
             vec = point - center
             return np.arctan2(vec[1], vec[0])
 
-        # Les deux centres possibles donnent chacun un sens de parcours.
-        # On choisit celui qui correspond au sens CW/CCW demande.
-        a1_1 = angle_from(center1, s2)
-        a2_1 = angle_from(center1, e2)
-        delta_1 = (a2_1 - a1_1) % (2 * np.pi)
-        is_ccw = delta_1 < np.pi
-        center = center1 if (is_ccw != direction_cw) else center2
-
         angle_start = angle_from(center, s2)
         angle_end = angle_from(center, e2)
+        same_point = np.linalg.norm(e2 - s2) <= 1e-9
 
         if direction_cw:
-            if angle_end > angle_start:
+            if same_point:
+                angle_end = angle_start - 2 * np.pi
+            elif angle_end > angle_start:
                 angle_end -= 2 * np.pi
         else:
-            if angle_end < angle_start:
+            if same_point:
+                angle_end = angle_start + 2 * np.pi
+            elif angle_end < angle_start:
                 angle_end += 2 * np.pi
 
         # Le nombre de segments est deduit de la longueur d'arc voulue et de la

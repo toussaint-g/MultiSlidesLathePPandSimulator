@@ -95,6 +95,9 @@ class IsoInterpreter:
                 match_move_cw = pattern_circular_move_cw.search(line)
                 match_move_ccw = pattern_circular_move_ccw.search(line)
                 match_timer = pattern_timer.search(line)
+                arc_center_x = None
+                arc_center_y = None
+                arc_center_z = None
 
                 # Recuperation des coordonnees de position et du rayon
                 if match_x and not match_timer:
@@ -121,20 +124,7 @@ class IsoInterpreter:
                 else:
                     position_c = obj_modal.position_c
                 
-                # R dans les mouvements circulaires : si R est present on le prend,
-                # sinon on le calcule a partir des IJK ou on prend le dernier R utilise (stocke dans les donnees modales)
-                if match_radius:
-                    radius = float(match_radius.group(1))
-                else:
-                    radius = obj_modal.radius
-
-                # Calcul du rayon pour les mouvements circulaires et determination du plan de travail
-                if match_i and match_j:
-                    radius = math.sqrt((float(match_i.group(1))) ** 2 + (float(match_j.group(1))) ** 2)
-                elif match_i and match_k:
-                    radius = math.sqrt((float(match_i.group(1))) ** 2 + (float(match_k.group(1))) ** 2)
-                elif match_j and match_k:
-                    radius = math.sqrt((float(match_j.group(1))) ** 2 + (float(match_k.group(1))) ** 2)
+                radius = obj_modal.radius
                 
                 # Recuperation de l'avance, de l'outil et du correcteur d'outil
                 if match_feedrate:
@@ -173,6 +163,50 @@ class IsoInterpreter:
                 else:
                     move = obj_modal.gcode_group01
 
+                if move in (self.machine.circular_move_CW_code, self.machine.circular_move_CCW_code):
+                    if match_radius:
+                        raise ValueError(error_message(
+                            ErrorCategory.GEOMETRY,
+                            "arc G2/G3 avec R non supporte, utiliser IJK",
+                        ))
+                    if work_plane == WorkPlaneType.XY:
+                        if not match_i or not match_j:
+                            raise ValueError(error_message(
+                                ErrorCategory.GEOMETRY,
+                                "arc G2/G3 en plan XY sans offsets I/J",
+                            ))
+                        i_value = float(match_i.group(1))
+                        j_value = float(match_j.group(1))
+                        k_value = 0.0
+                    elif work_plane == WorkPlaneType.XZ:
+                        if not match_i or not match_k:
+                            raise ValueError(error_message(
+                                ErrorCategory.GEOMETRY,
+                                "arc G2/G3 en plan XZ sans offsets I/K",
+                            ))
+                        i_value = float(match_i.group(1))
+                        j_value = 0.0
+                        k_value = float(match_k.group(1))
+                    elif work_plane == WorkPlaneType.YZ:
+                        if not match_j or not match_k:
+                            raise ValueError(error_message(
+                                ErrorCategory.GEOMETRY,
+                                "arc G2/G3 en plan YZ sans offsets J/K",
+                            ))
+                        i_value = 0.0
+                        j_value = float(match_j.group(1))
+                        k_value = float(match_k.group(1))
+                    else:
+                        raise ValueError(error_message(
+                            ErrorCategory.GEOMETRY,
+                            "arc G2/G3 sans plan de travail actif",
+                        ))
+
+                    arc_center_x = obj_modal.position_x + i_value
+                    arc_center_y = obj_modal.position_y + j_value
+                    arc_center_z = obj_modal.position_z + k_value
+                    radius = math.sqrt(i_value ** 2 + j_value ** 2 + k_value ** 2)
+
                 # Calcul des distances suivant le type de mouvement
                 if move == self.machine.rapid_move_code:
                     distance = obj_mathematical_functions.linear_distance_3D(
@@ -197,8 +231,7 @@ class IsoInterpreter:
                     distance_in_material = distance
                     move_type = MoveType.LINEAR_MOVE
                 else:
-                    # Pour un arc, le rayon peut venir soit d'un R explicite, soit des IJK
-                    # recalcules plus haut dans la boucle.
+                    # Pour un arc, le centre vient obligatoirement des offsets IJK.
                     distance = obj_mathematical_functions.circular_distance_3D(
                             obj_modal.position_x,
                             obj_modal.position_y,
@@ -206,7 +239,12 @@ class IsoInterpreter:
                             position_x,
                             position_y,
                             position_z,
+                            arc_center_x,
+                            arc_center_y,
+                            arc_center_z,
                             radius,
+                            move == self.machine.circular_move_CW_code,
+                            work_plane,
                         )
                     distance_in_material = distance
                     if move == self.machine.circular_move_CW_code:
@@ -243,7 +281,10 @@ class IsoInterpreter:
                     position_y,
                     position_z,
                     position_c,
-                    work_plane)
+                    work_plane,
+                    arc_center_x,
+                    arc_center_y,
+                    arc_center_z)
                 
                 lines.append(obj_line)
 
@@ -280,62 +321,74 @@ class MathematicalFunctions:
         )
         return distance
 
-    def circular_distance_3D(self, start_point_x, start_point_y, start_point_z, end_point_x, end_point_y, end_point_z, radius):
+    def circular_distance_3D(
+        self,
+        start_point_x,
+        start_point_y,
+        start_point_z,
+        end_point_x,
+        end_point_y,
+        end_point_z,
+        center_x,
+        center_y,
+        center_z,
+        radius,
+        direction_cw,
+        work_plane,
+    ):
         """Classe qui permet de calculer la longueur d'un arc. Il tient egalement compte d'un eventuel mouvement sur le 3eme axe (3d)"""
 
-        # Milieu du segment reliant start et end
-        mx = (start_point_x + end_point_x) / 2
-        my = (start_point_y + end_point_y) / 2
-
-        # Distance entre start et end
-        d = math.dist((start_point_x, start_point_y), (end_point_x, end_point_y))
-
-        diameter = 2 * radius
-        tolerance = abs(self.calculation_tolerance)
-        if d > diameter + tolerance:
+        if center_x is None or center_y is None or center_z is None:
             raise ValueError(error_message(
                 ErrorCategory.GEOMETRY,
-                "le rayon est trop petit pour passer par les deux points",
+                "centre IJK absent pour calculer la longueur d'arc",
             ))
 
-        # Distance entre le milieu et le centre du cercle
-        h_squared = radius**2 - (d / 2) ** 2
-        h = math.sqrt(max(0.0, h_squared))
+        tolerance = abs(self.calculation_tolerance)
+        if radius <= tolerance:
+            raise ValueError(error_message(
+                ErrorCategory.GEOMETRY,
+                "rayon d'arc nul",
+            ))
 
-        # Calcul du vecteur perpendiculaire au segment start-end
-        dx = end_point_x - start_point_x
-        dy = end_point_y - start_point_y
-        perp_dx = -dy
-        perp_dy = dx
+        if work_plane == WorkPlaneType.XY:
+            start_u, start_v = start_point_x, start_point_y
+            end_u, end_v = end_point_x, end_point_y
+            center_u, center_v = center_x, center_y
+            helical_delta = end_point_z - start_point_z
+        elif work_plane == WorkPlaneType.XZ:
+            start_u, start_v = start_point_x, start_point_z
+            end_u, end_v = end_point_x, end_point_z
+            center_u, center_v = center_x, center_z
+            helical_delta = end_point_y - start_point_y
+        elif work_plane == WorkPlaneType.YZ:
+            start_u, start_v = start_point_y, start_point_z
+            end_u, end_v = end_point_y, end_point_z
+            center_u, center_v = center_y, center_z
+            helical_delta = end_point_x - start_point_x
+        else:
+            raise ValueError(error_message(
+                ErrorCategory.GEOMETRY,
+                "plan de travail absent pour calculer la longueur d'arc",
+            ))
 
-        # Normalisation du vecteur
-        norm = math.sqrt(perp_dx**2 + perp_dy**2)
-
-        if norm != 0:
-            perp_dx = perp_dx / norm
-            perp_dy = perp_dy / norm
-
-        # Deux solutions pour le centre du cercle
-        cx1 = mx + h * perp_dx
-        cy1 = my + h * perp_dy
-
-        # Choisir le bon cercle
-        cx, cy = cx1, cy1
-
-        # Calcul de l'angle entre start et end en passant par le centre
-        angle1 = math.atan2(start_point_y - cy, start_point_x - cx)
-        angle2 = math.atan2(end_point_y - cy, end_point_x - cx)
-        angle = abs(angle2 - angle1)
-
-        # Si l'angle depasse 180, on prend l'arc le plus court
-        if angle > math.pi:
-            angle = 2 * math.pi - angle
+        angle1 = math.atan2(start_v - center_v, start_u - center_u)
+        angle2 = math.atan2(end_v - center_v, end_u - center_u)
+        angle_tolerance = 1e-12
+        if direction_cw:
+            angle = angle1 - angle2
+            if angle <= angle_tolerance:
+                angle += 2 * math.pi
+        else:
+            angle = angle2 - angle1
+            if angle <= angle_tolerance:
+                angle += 2 * math.pi
 
         # Calcul de la longueur de l'arc
         arc_length = radius * angle
 
         # Calcul distance 3d si helicoidal
-        arc_length_3d = math.sqrt((arc_length ** 2) + (abs(end_point_z - start_point_z) ** 2))
+        arc_length_3d = math.sqrt((arc_length ** 2) + (abs(helical_delta) ** 2))
 
         return arc_length_3d
 
@@ -368,8 +421,9 @@ class Modal:
 class Line:
     """Classe qui permet de memoriser le contenu utile au rapport des lignes du G-Code"""
 
-    def __init__(self, g_code_line, tool_number, tool_offset, distance, distance_in_material, time, productive_time, 
-                 move_type, radius, feedrate, endpoint_x, endpoint_y, endpoint_z, endpoint_c, work_plane):
+    def __init__(self, g_code_line, tool_number, tool_offset, distance, distance_in_material, time, productive_time,
+                 move_type, radius, feedrate, endpoint_x, endpoint_y, endpoint_z, endpoint_c, work_plane,
+                 arc_center_x=None, arc_center_y=None, arc_center_z=None):
         self.g_code_line = g_code_line
         self.tool_number = tool_number
         self.tool_offset = tool_offset
@@ -385,6 +439,9 @@ class Line:
         self.endpoint_z = endpoint_z
         self.endpoint_c = endpoint_c
         self.work_plane = work_plane
+        self.arc_center_x = arc_center_x
+        self.arc_center_y = arc_center_y
+        self.arc_center_z = arc_center_z
 
 class MoveType(Enum):
     """Enum pour memoriser les types de mouvement par ligne"""

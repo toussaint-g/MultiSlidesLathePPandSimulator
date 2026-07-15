@@ -10,7 +10,7 @@ from app_errors import ErrorCategory, error_message, iso_error, unmanaged_diagno
 from p01_machines_config.machine_enums import FeedrateUnit, MotionMode, RotationDirection, RotationUnit, ToolComp, ToolType, AxisOfRotation
 from p03_iso_generator.apt_parser import csv_floats, csv_tokens
 from p03_iso_generator.helical import emit_helical_move, emit_helical_not_supported, parse_helical_definition, solve_helical_definition
-from p03_iso_generator.iso_writer import IsoWriter, ToolUpdateResult
+from p03_iso_generator.iso_writer import IsoWriter
 from p03_iso_generator.machine_state import SpindleSelection, ToolSelection, WriterState
 from p03_iso_generator.tlon import emit_tlon_arc, emit_tlon_not_supported, parse_tlon_definition, solve_tlon_definition
 
@@ -225,20 +225,24 @@ def h_spindle(apt_keyword: str, argument_text: str, state: WriterState, iso_writ
 
     # SPINDL finalise l'etat outil/broche et declenche l'emission ISO.
     _, work_plane_code = iso_writer.machine.get_tool_geometry_work_plane(state.tool.number)
-    tool_update = iso_writer.apply_tool_update(
+    tool_change_processing = state.tool_change_processing
+    iso_writer.apply_tool_update(
         work_plane_code,
         ToolSelection.from_writer_state(state),
         SpindleSelection.from_writer_state(state),
         state.position_x,
+        state.position_y,
+        state.position_z,
         state.position_c,
-        state.tool_change_processing,
+        tool_change_processing,
     )
 
-    if tool_update.position_c is not None:
-        state.position_c = tool_update.position_c
-    if tool_update.position_y is not None:
-        state.position_y = tool_update.position_y
-
+    if tool_change_processing:
+        state.position_x = None
+        state.position_y = None
+        state.position_z = None
+        state.position_c = None
+        
     state.tool_change_processing = False
 
 
@@ -283,6 +287,7 @@ def h_goto(apt_keyword: str, argument_text: str, state: WriterState, iso_writer:
     z_out = None
     c_out = None
 
+    # Si l'outil est un outil de fraisage, on calcule l'angle C a partir du vecteur IJK et des vecteurs de broche et d'outil.
     if _is_milling_tool(state, iso_writer):
         tool_i_value, tool_j_value, _tool_k_value = _get_tool_k_vector(state, iso_writer)
         path_i_value, path_j_value, _path_k_value = _get_active_spindle_vector(state)
@@ -316,16 +321,16 @@ def h_goto(apt_keyword: str, argument_text: str, state: WriterState, iso_writer:
     # On filtre les petites variations numeriques issues de l'APT afin de ne
     # pas reemettre des blocs ISO pour des ecarts purement flottants.
     # Si une coordonnee a change de plus que la tolerance, on l'ajoute a la ligne de mouvement et on met a jour la position courante.
-    if abs(new_x_value - state.position_x) > tolerance:
+    if state.position_x is None or abs(new_x_value - state.position_x) > tolerance:
         state.position_x = new_x_value
         x_out = new_x_value
-    if abs(new_y_value - state.position_y) > tolerance:
+    if state.position_y is None or abs(new_y_value - state.position_y) > tolerance:
         state.position_y = new_y_value
         y_out = new_y_value
-    if abs(new_z_value - state.position_z) > tolerance:
+    if state.position_z is None or abs(new_z_value - state.position_z) > tolerance:
         state.position_z = new_z_value
         z_out = new_z_value
-    if abs(new_c_value - state.position_c) > tolerance:
+    if state.position_c is None or abs(new_c_value - state.position_c) > tolerance:
         state.position_c = new_c_value
         c_out = new_c_value
 

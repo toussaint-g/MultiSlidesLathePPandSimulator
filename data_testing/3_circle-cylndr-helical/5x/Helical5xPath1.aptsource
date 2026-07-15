@@ -1,5 +1,5 @@
 $$ -----------------------------------------------------------------
-$$     Généré le Friday, 10 July 2026 13:19:27
+$$     Généré le Monday, 13 July 2026 16:08:05
 $$     CATIA APT VERSION 1.0
 $$ -----------------------------------------------------------------
 CHANNEL/1
@@ -25,7 +25,6 @@ MAXRPM/12000.000000
 $$ OPERATION NAME : Changement outil.68
 $$  Début de génération de: Changement outil.68
 MULTAX/ON
-FROM  /    0.00000,    0.00000,  100.00000, 0.000000, 0.000000, 1.000000
 $$ TOOLCHANGEBEGINNING
 CUTTER/  1.000000,  0.000000,  0.500000,  0.000000,  0.000000,$
          0.000000,  5.000000

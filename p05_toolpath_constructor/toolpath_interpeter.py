@@ -310,10 +310,11 @@ class ToolPathInterpreter:
 
                 # Si cercle CW
                 elif current_line.move_type == MoveType.CIRCULAR_MOVE_CW:
+                    arc_center = [current_line.arc_center_x, current_line.arc_center_y, current_line.arc_center_z]
                     base_path_points = obj_tool_path_builder.build_circle_points(
                         previous_point,
                         current_point,
-                        current_line.radius,
+                        arc_center,
                         circle_resolution,
                         True,
                         current_line.work_plane)
@@ -327,10 +328,11 @@ class ToolPathInterpreter:
 
                 # Si cercle CCW
                 elif current_line.move_type == MoveType.CIRCULAR_MOVE_CCW:
+                    arc_center = [current_line.arc_center_x, current_line.arc_center_y, current_line.arc_center_z]
                     base_path_points = obj_tool_path_builder.build_circle_points(
                         previous_point,
                         current_point,
-                        current_line.radius,
+                        arc_center,
                         circle_resolution,
                         False,
                         current_line.work_plane)
